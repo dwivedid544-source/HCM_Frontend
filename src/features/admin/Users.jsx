@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users as UsersIcon, 
   Search, 
@@ -51,6 +52,7 @@ const Users = () => {
     showToast 
   } = useAdmin();
   const { check: hasPermission } = usePermission('users');
+  const navigate = useNavigate();
 
   // State
   const [searchTerm, setSearchTerm] = useState('');
@@ -177,7 +179,7 @@ const Users = () => {
           <p className="hcm-page-subtitle">Oversee platform access, assign roles and configure workforce identities</p>
         </div>
         <div className="flex items-center gap-3">
-          <PermissionGate module="users" action="manage">
+          <PermissionGate module="users" action="create">
           <button 
             onClick={() => setIsImportModalOpen(true)}
             className="btn-secondary px-5 py-2.5 flex items-center gap-2 cursor-pointer"
@@ -185,6 +187,8 @@ const Users = () => {
             <Upload size={18} />
             <span className="hidden sm:inline">Import</span>
           </button>
+          </PermissionGate>
+          <PermissionGate module="users" action="view">
           <button 
             onClick={handleExport}
             className="btn-secondary px-5 py-2.5 flex items-center gap-2 cursor-pointer"
@@ -357,6 +361,7 @@ const Users = () => {
                      </th>
                      <th className="hcm-th px-8 py-5">Employee Info</th>
                      <th className="hcm-th px-8 py-5">Role / Dept</th>
+                     <th className="hcm-th px-8 py-5">Allocated Salary</th>
                      <th className="hcm-th px-8 py-5 text-center">Last Login</th>
                      <th className="hcm-th px-8 py-5 text-center">Status</th>
                      <th className="hcm-th px-8 py-5 text-right">Action</th>
@@ -386,6 +391,17 @@ const Users = () => {
                            <p className="font-bold text-slate-700 dark:text-slate-200 leading-none">{user.role}</p>
                            <p className="text-[10px] font-bold text-slate-400 mt-2 font-bold leading-none">{user.department}</p>
                         </td>
+                        <td className="hcm-td px-8 py-6">
+                           {(user.baseSalary || user.monthlyCTC) ? (
+                             <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400 font-mono text-xs bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                               ${Number(user.baseSalary || user.monthlyCTC).toLocaleString()}/mo
+                             </span>
+                           ) : (
+                             <span className="text-xs text-slate-400 font-medium italic">
+                               Not Allocated
+                             </span>
+                           )}
+                        </td>
                         <td className="hcm-td px-8 py-6 text-center text-xs font-bold text-slate-600 dark:text-slate-400">
                            {user.lastLogin}
                         </td>
@@ -403,6 +419,13 @@ const Users = () => {
                         </td>
                         <td className="hcm-td px-8 py-6 text-right">
                            <div className="flex justify-end items-center gap-1.5">
+                               <button 
+                                 onClick={() => navigate(`/admin/roles?role=${encodeURIComponent(user.role)}&user=${user.id}`)}
+                                 className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" 
+                                 title="Permissions Matrix"
+                               >
+                                 <ShieldCheck size={18} />
+                               </button>
                                <button 
                                  onClick={() => setUserToView(user)}
                                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" 

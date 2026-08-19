@@ -63,7 +63,10 @@ export const EmployeeProvider = ({ children }) => {
             relation: mergedData.emergencyRelation || mergedData.emergencyContact?.relation || '',
             phone: mergedData.emergencyPhone || mergedData.emergencyContact?.phone || ''
           },
-          shift: mergedData.shift || null
+          shift: mergedData.shift || null,
+          baseSalary: mergedData.compensationProfile?.baseSalary || mergedData.baseSalary || 0,
+          monthlyCTC: mergedData.compensationProfile?.monthlyCTC || mergedData.monthlyCTC || 0,
+          annualCTC: mergedData.compensationProfile?.annualCTC || (mergedData.compensationProfile?.monthlyCTC ? mergedData.compensationProfile.monthlyCTC * 12 : 0)
         };
         setProfile(mapped);
       } else {

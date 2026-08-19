@@ -36,8 +36,8 @@ const DepartmentManagement = () => {
   const openEditModal = (dept) => {
     setEditingDept(dept);
     setName(dept.name);
-    setHead(dept.head);
-    setSelectedOrgId(dept.organizationId || '');
+    setHead(dept.head === 'None' ? '' : (dept.head || ''));
+    setSelectedOrgId(dept.organizationId || organizations[0]?.id || '');
     setIsModalOpen(true);
   };
 
@@ -45,19 +45,17 @@ const DepartmentManagement = () => {
     e.preventDefault();
     if (!name || !selectedOrgId) return;
 
+    const payload = {
+      name,
+      head: head && head.trim() !== '' ? head.trim() : 'None',
+      organizationId: selectedOrgId
+    };
+
     let success = false;
     if (editingDept) {
-      success = await updateDept(editingDept.id, {
-        name,
-        head,
-        organizationId: selectedOrgId
-      });
+      success = await updateDept(editingDept.id, payload);
     } else {
-      success = await addDept({
-        name,
-        head,
-        organizationId: selectedOrgId
-      });
+      success = await addDept(payload);
     }
     if (success) {
       setIsModalOpen(false);
@@ -66,7 +64,7 @@ const DepartmentManagement = () => {
 
   const filteredDepts = departments.filter(dept => 
     dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dept.head.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (dept.head && dept.head.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (dept.organizationName && dept.organizationName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -133,7 +131,9 @@ const DepartmentManagement = () => {
                   <div className="flex items-center gap-2 text-sm font-bold text-slate-500 dark:text-slate-400 mt-2">
                     <User size={14} className="text-slate-400" />
                     <span>Dept. Head: </span>
-                    <span className="text-slate-700 dark:text-slate-300 font-bold">{dept.head}</span>
+                    <span className={dept.head && dept.head !== 'None' ? "text-slate-700 dark:text-slate-300 font-bold" : "text-slate-400 dark:text-slate-500 font-normal"}>
+                      {dept.head && dept.head !== 'None' ? dept.head : 'None'}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 dark:text-slate-500 mb-6 mt-1">
                     <Building2 size={12} className="text-slate-400" />
@@ -223,18 +223,18 @@ const DepartmentManagement = () => {
                 </div>
 
                 <div>
-                  <label className="form-label">Department Head</label>
+                  <label className="form-label">Head of Department (Optional)</label>
                   <select
                     value={head}
                     onChange={(e) => setHead(e.target.value)}
                     className="input-field font-semibold"
-                    required
                   >
-                    <option value="">Select Department Head</option>
+                    <option value="">None (No Head Assigned)</option>
                     {users
                       .filter(u => {
-                        const targetOrgName = organizations.find(o => o.id === selectedOrgId)?.name;
-                        return !selectedOrgId || u.organization?.name === targetOrgName;
+                        const targetOrg = organizations.find(o => o.id === selectedOrgId);
+                        const isOrgMatch = !selectedOrgId || u.organizationId === selectedOrgId || u.department === targetOrg?.name || u.organization?.id === selectedOrgId;
+                        return (u.status === 'active' || u.status === 'Active') && u.role !== 'CANDIDATE' && u.role !== 'Candidate';
                       })
                       .map(u => (
                         <option key={u.id} value={u.name}>{u.name} ({u.role})</option>

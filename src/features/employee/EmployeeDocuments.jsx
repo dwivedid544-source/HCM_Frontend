@@ -8,6 +8,7 @@ import {
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
 import CenterModal from '../../shared/components/layout/CenterModal';
+import PermissionGate from '../../shared/components/common/PermissionGate';
 
 const EmployeeDocuments = () => {
   const { documents, uploadDoc, deleteDoc, showToast } = useEmployee();
@@ -263,6 +264,7 @@ const EmployeeDocuments = () => {
             <span>Vault Index</span>
           </button>
           
+          <PermissionGate module="documents" action="create">
           <button 
             onClick={() => setIsUploadModalOpen(true)}
             className="btn-primary px-8 py-2.5 font-bold flex justify-center items-center gap-2 shadow-xl shadow-primary-200"
@@ -270,6 +272,7 @@ const EmployeeDocuments = () => {
              <CloudUpload size={18} />
              <span>Upload File</span>
           </button>
+          </PermissionGate>
 
           {/* AI Document Analyzer Button */}
           <button 
@@ -353,7 +356,9 @@ const EmployeeDocuments = () => {
                      </div>
                       <div className="flex items-center gap-1 transition-opacity">
                         <button onClick={() => window.open(doc.url, '_blank')} className="p-2.5 bg-slate-50 text-slate-400 hover:text-primary-600 rounded-xl transition-all"><Eye size={16} /></button>
+                        <PermissionGate module="documents" action="delete">
                         <button onClick={() => deleteDoc(doc.id)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-rose-500 rounded-xl transition-all"><Trash2 size={16} /></button>
+                        </PermissionGate>
                       </div>
                   </div>
                   <div className="text-left relative z-10">

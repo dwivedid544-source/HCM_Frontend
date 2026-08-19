@@ -10,6 +10,8 @@ import { cn } from '../../utils/cn';
 import TaxRulesModal from '../../shared/components/admin/TaxRulesModal';
 import PayrollBreakdownModal from '../../shared/components/admin/PayrollBreakdownModal';
 import ActionDropdown from '../../shared/components/admin/ActionDropdown';
+import PermissionGate from '../../shared/components/common/PermissionGate';
+import { usePermission } from '../../hooks/usePermission';
 import { useCurrency } from '../../hooks/useCurrency';
 import ImportModal from '../../shared/components/import/ImportModal';
 import { Upload } from 'lucide-react';
@@ -86,16 +88,22 @@ const PayrollCenter = () => {
       const isNotCandidate = roleStr !== 'candidate';
       const hasProfile = !!u.profileId;
       const isActive = !['suspended', 'inactive', 'terminated'].includes((u.status || '').toLowerCase());
-      return isNotAdmin && isNotCandidate && hasProfile && (isActive || payrollList.some(p => p.userId === u.id || p.employeeId === u.profileId));
+      return isNotAdmin && isNotCandidate && hasProfile && (isActive || payrollList.some(p => p.userId === u.id || p.employeeId === u.profileId || p.employee?.userId === u.id));
     })
     .map(u => {
-      const existing = payrollList.find(p => p.userId === u.id || p.employeeId === u.profileId);
+      const existing = payrollList.find(p => 
+        (p.userId && (p.userId === u.id || p.userId === u.profileId)) || 
+        (p.employeeId && (p.employeeId === u.profileId || p.employeeId === u.id)) ||
+        (p.employee?.userId && p.employee.userId === u.id) ||
+        (p.employee?.id && p.employee.id === u.profileId)
+      );
       if (existing) {
         return {
           ...existing,
           role: u.role,
           img: existing.img || u.img || '',
-          id: u.id // Pass the user ID so the modal knows which user it's for
+          id: u.id, // Pass the user ID so the modal knows which user it's for
+          status: existing.status === 'Paid' || existing.status === 'PAID' ? 'Processed' : existing.status
         };
       }
 
@@ -107,7 +115,7 @@ const PayrollCenter = () => {
         basic: u.baseSalary || 0,
         bonus: 0,
         deductions: 0,
-        net: u.monthlyCTC || 0,
+        net: u.monthlyCTC || u.baseSalary || 0,
         status: 'Unprocessed',
         img: u.img || ''
       };
@@ -154,6 +162,7 @@ const PayrollCenter = () => {
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
+          <PermissionGate module="payroll_center" action="create">
           <button
             onClick={() => setIsImportModalOpen(true)}
             className="btn-secondary flex items-center gap-2"
@@ -169,6 +178,7 @@ const PayrollCenter = () => {
             <Play size={18} fill="currentColor" />
             <span>Run Payroll</span>
           </button>
+          </PermissionGate>
         </div>
       </div>
 
@@ -273,6 +283,7 @@ const PayrollCenter = () => {
                       </td>
                       <td className="hcm-td text-right">
                         {req.status === 'ManagerApproved' ? (
+                          <PermissionGate module="payroll_center" action="approve" fallback={<span className="text-xs text-slate-400 font-bold">Pending Approval</span>}>
                           <div className="flex justify-end items-center gap-2">
                             <button 
                               onClick={() => approveIncrementRequest(req.id)}
@@ -285,6 +296,7 @@ const PayrollCenter = () => {
                               title="Reject"
                             >Reject</button>
                           </div>
+                          </PermissionGate>
                         ) : (
                           <span className={cn(
                             "text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded border",
@@ -347,43 +359,27 @@ const PayrollCenter = () => {
                         {emp.status}
                       </span>
                     </td>
-                    <td className="hcm-td text-right">
-                      <div className="flex justify-end items-center gap-1.5">
+                    <td className="hcm-td text-right select-none">
+                      <div className="flex justify-end items-center gap-2">
                         <button
                           onClick={() => {
                             setSelectedRecord(emp);
                             setShowPayslipModal(true);
                           }}
-                          className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 rounded-lg transition-all"
+                          className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
                           title="View Payslip"
                         >
                           <Eye size={16} />
                         </button>
-                        {emp.status === 'Draft' ? (
+                        {emp.status === 'Processed' ? (
                           <>
-                            <button
-                              onClick={() => updatePayrollDetails(emp.id, { status: 'Processed' })}
-                              className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 rounded-lg transition-all"
-                              title="Process Payroll"
-                            >
-                              <CheckCircle2 size={16} />
-                            </button>
-                            <ActionDropdown
-                              actions={[
-                                { label: 'Download Payslip', icon: Download, onClick: () => downloadPayslip(emp) }
-                              ]}
-                              direction={filteredPayroll.length > 2 && idx >= filteredPayroll.length - 2 ? 'up' : 'down'}
-                            />
-                          </>
-                        ) : emp.status === 'Processed' ? (
-                          <>
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 text-emerald-600 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg text-xs font-bold border border-emerald-100 dark:border-emerald-900/30">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 text-emerald-600 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg text-xs font-bold border border-emerald-100 dark:border-emerald-900/30 select-none">
                               <Check size={14} strokeWidth={3} />
                               <span>Done</span>
                             </div>
                             <button
                               onClick={() => downloadPayslip(emp)}
-                              className="flex items-center gap-1.5 px-2.5 py-1 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg text-xs font-bold transition-all border border-blue-100 dark:border-blue-900/30"
+                              className="flex items-center gap-1.5 px-2.5 py-1 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg text-xs font-bold transition-all border border-blue-100 dark:border-blue-900/30 cursor-pointer"
                               title="Download Payslip"
                             >
                               <Download size={14} strokeWidth={2.5} />
@@ -391,12 +387,23 @@ const PayrollCenter = () => {
                             </button>
                           </>
                         ) : (
-                          <ActionDropdown
-                            actions={[
-                              { label: 'Download Payslip', icon: Download, onClick: () => downloadPayslip(emp) }
-                            ]}
-                            direction={filteredPayroll.length > 2 && idx >= filteredPayroll.length - 2 ? 'up' : 'down'}
-                          />
+                          <>
+                            <button
+                              onClick={() => updatePayrollDetails(emp.id, { status: 'Processed' }, selectedMonth)}
+                              className="flex items-center gap-1.5 px-2.5 py-1 text-emerald-700 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 rounded-lg text-xs font-extrabold transition-all border border-emerald-200 dark:border-emerald-800/40 cursor-pointer shadow-sm active:scale-95"
+                              title={`Pay ${emp.name} for ${selectedMonth}`}
+                            >
+                              <Zap size={14} className="fill-current text-emerald-600 dark:text-emerald-400" />
+                              <span>Pay Now</span>
+                            </button>
+                            <ActionDropdown
+                              actions={[
+                                { label: 'Process / Pay Now', icon: Zap, onClick: () => updatePayrollDetails(emp.id, { status: 'Processed' }, selectedMonth) },
+                                { label: 'Download Payslip', icon: Download, onClick: () => downloadPayslip(emp) }
+                              ]}
+                              direction={filteredPayroll.length > 2 && idx >= filteredPayroll.length - 2 ? 'up' : 'down'}
+                            />
+                          </>
                         )}
                       </div>
                     </td>

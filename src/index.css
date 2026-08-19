@@ -86,23 +86,23 @@
 
   /* Card System */
   .card {
-    @apply bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800/80 transition-colors duration-300;
+    @apply bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800/80 transition-colors duration-300 select-none;
   }
 
   .hcm-kpi-card {
-    @apply bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800/80 transition-colors duration-300 flex flex-col justify-between h-[130px] min-h-[120px] max-h-[140px];
+    @apply bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800/80 transition-colors duration-300 flex flex-col justify-between h-[130px] min-h-[120px] max-h-[140px] select-none;
   }
 
   .card-title {
-    @apply text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1.5 block;
+    @apply text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1.5 block select-none;
   }
 
   .card-value {
-    @apply text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-none;
+    @apply text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-none select-none;
   }
 
   .card-desc {
-    @apply text-xs font-normal text-slate-400 dark:text-slate-500 mt-1 block;
+    @apply text-xs font-normal text-slate-400 dark:text-slate-500 mt-1 block select-none;
   }
 
   /* Table System */
@@ -111,19 +111,19 @@
   }
 
   .hcm-table {
-    @apply w-full text-left text-sm border-collapse;
+    @apply w-full text-left text-sm border-collapse select-none;
   }
 
   .hcm-thead {
-    @apply bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800;
+    @apply bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 select-none;
   }
 
   .hcm-th {
-    @apply px-6 py-4 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest h-12;
+    @apply px-6 py-4 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest h-12 select-none cursor-default;
   }
 
   .hcm-tr {
-    @apply border-b border-slate-100 dark:border-slate-800/50 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all duration-150;
+    @apply border-b border-slate-100 dark:border-slate-800/50 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all duration-150 select-none;
   }
 
   .hcm-td {

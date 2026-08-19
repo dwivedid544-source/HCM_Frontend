@@ -15,6 +15,7 @@ export const SuperAdminProvider = ({ children }) => {
   const [organizations, setOrganizations] = useState([]);
   const [departments, setDepartments]   = useState([]);
   const [roles, setRoles]               = useState([]);
+  const [roleHistory, setRoleHistory]   = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
   const [platformStats, setPlatformStats] = useState(null);
   const [loading, setLoading]           = useState(false);
@@ -46,10 +47,10 @@ export const SuperAdminProvider = ({ children }) => {
       const res = await superAdminAPI.getAllPlatformUsers();
       const mapped = (res.data.data || []).map(u => ({
         ...u,
-        name: u.employeeProfile?.fullName || u.email.split('@')[0] || 'System User',
-        department: u.organization?.name || 'Platform Level',
+        name: u.employeeProfile?.fullName || u.candidateProfile?.fullName || u.email.split('@')[0] || 'System User',
+        department: u.organization?.name || (u.role === 'CANDIDATE' ? 'Candidate Network' : 'Platform Level'),
         status: u.isActive ? 'active' : 'suspended',
-        profileId: u.employeeProfile?.id,
+        profileId: u.employeeProfile?.id || u.candidateProfile?.id,
         baseSalary: u.employeeProfile?.compensationProfile?.baseSalary || 0,
         monthlyCTC: u.employeeProfile?.compensationProfile?.monthlyCTC || 0
       }));
@@ -69,6 +70,16 @@ export const SuperAdminProvider = ({ children }) => {
       console.error(err);
       setActivityLogs([]);
       showToast('Failed to load audit logs', 'error');
+    }
+  }, []);
+
+  const fetchRoleHistory = useCallback(async () => {
+    try {
+      const res = await adminAPI.getRoleHistory();
+      setRoleHistory(res.data?.data || []);
+    } catch (err) {
+      console.error('Failed to load role history:', err);
+      setRoleHistory([]);
     }
   }, []);
 
@@ -92,21 +103,62 @@ export const SuperAdminProvider = ({ children }) => {
     }
   }, []);
 
+  const refreshAll = useCallback(async () => {
+    await Promise.all([
+      fetchPlatformStats(),
+      fetchOrganizations(),
+      fetchUsers(),
+      fetchAuditLogs(),
+      fetchDepartments(),
+      fetchRoles(),
+      fetchRoleHistory()
+    ]);
+  }, [fetchPlatformStats, fetchOrganizations, fetchUsers, fetchAuditLogs, fetchDepartments, fetchRoles, fetchRoleHistory]);
+
   useEffect(() => {
-    fetchPlatformStats();
-    fetchOrganizations();
-    fetchUsers();
-    fetchAuditLogs();
-    fetchDepartments();
-    fetchRoles();
-  }, [fetchPlatformStats, fetchOrganizations, fetchUsers, fetchAuditLogs, fetchDepartments, fetchRoles]);
+    refreshAll();
+
+    // Auto-refresh when tab gains focus or becomes visible
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        refreshAll();
+      }
+    };
+
+    const handleDataUpdate = () => {
+      refreshAll();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('visibilitychange', handleFocus);
+    window.addEventListener('permissions_updated', handleDataUpdate);
+    window.addEventListener('department_updated', handleDataUpdate);
+    window.addEventListener('user_updated', handleDataUpdate);
+
+    // 15-second gentle polling interval while tab is active
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshAll();
+      }
+    }, 15000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('visibilitychange', handleFocus);
+      window.removeEventListener('permissions_updated', handleDataUpdate);
+      window.removeEventListener('department_updated', handleDataUpdate);
+      window.removeEventListener('user_updated', handleDataUpdate);
+      clearInterval(interval);
+    };
+  }, [refreshAll]);
 
   // ── ACTIONS ──
 
   const createOrganization = async (data) => {
     try {
       await superAdminAPI.createOrganization(data);
-      await fetchOrganizations();
+      await Promise.all([fetchOrganizations(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('data_updated'));
       showToast('Organization created!');
     } catch (err) {
       showToast(err.response?.data?.error?.message || 'Failed', 'error');
@@ -116,7 +168,8 @@ export const SuperAdminProvider = ({ children }) => {
   const deleteOrganization = async (id) => {
     try {
       await superAdminAPI.deleteOrganization(id);
-      await fetchOrganizations();
+      await Promise.all([fetchOrganizations(), fetchDepartments(), fetchUsers(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('data_updated'));
       showToast('Organization deleted!');
     } catch (err) {
       showToast(err.response?.data?.error?.message || 'Failed', 'error');
@@ -126,7 +179,8 @@ export const SuperAdminProvider = ({ children }) => {
   const createAdminForOrg = async (orgId, data) => {
     try {
       await superAdminAPI.createAdminForOrg(orgId, data);
-      await fetchUsers();
+      await Promise.all([fetchUsers(), fetchOrganizations(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('user_updated'));
       showToast('Admin created and linked!');
       return { success: true };
     } catch (err) {
@@ -139,7 +193,8 @@ export const SuperAdminProvider = ({ children }) => {
   const toggleUserActive = async (id) => {
     try {
       await superAdminAPI.toggleAnyUserActive(id);
-      await fetchUsers();
+      await Promise.all([fetchUsers(), fetchDepartments(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('user_updated'));
       showToast('User status updated!');
     } catch {
       setUsers(prev => prev.map(u => u.id === id ? { ...u, isActive: !u.isActive } : u));
@@ -147,21 +202,34 @@ export const SuperAdminProvider = ({ children }) => {
     }
   };
 
-  const changeUserRole = async (id, role) => {
+  const changeUserRole = async (id, roleData) => {
     try {
-      await superAdminAPI.changeAnyUserRole(id, { role });
-      await fetchUsers();
-      showToast('Role updated!');
-    } catch {
-      setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u));
-      showToast('Role updated (demo)');
+      const payload = typeof roleData === 'string' ? { role: roleData } : roleData;
+      await superAdminAPI.changeAnyUserRole(id, payload);
+      await Promise.all([fetchUsers(), fetchDepartments(), fetchRoles(), fetchRoleHistory(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
+      showToast('Role updated successfully!');
+    } catch (err) {
+      showToast(err.response?.data?.error?.message || 'Failed to update role', 'error');
+    }
+  };
+
+  const revokeUserRole = async (id) => {
+    try {
+      const res = await superAdminAPI.revokeAnyUserRole(id);
+      await Promise.all([fetchUsers(), fetchDepartments(), fetchRoles(), fetchRoleHistory(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
+      showToast(res.data?.message || 'Role revoked successfully!');
+    } catch (err) {
+      showToast(err.response?.data?.error?.message || 'Failed to revoke role', 'error');
     }
   };
 
   const addRole = async (role) => {
     try {
       await adminAPI.createRole(role);
-      await fetchRoles();
+      await Promise.all([fetchRoles(), fetchRoleHistory()]);
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
       showToast('Role created successfully!');
     } catch (err) {
       showToast(err.response?.data?.error?.message || 'Failed to create role', 'error');
@@ -171,7 +239,8 @@ export const SuperAdminProvider = ({ children }) => {
   const updateRole = async (id, updates) => {
     try {
       await adminAPI.updateRole(id, updates);
-      await fetchRoles();
+      await Promise.all([fetchRoles(), fetchUsers(), fetchRoleHistory()]);
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
       showToast('Role updated successfully!');
     } catch (err) {
       showToast(err.response?.data?.error?.message || 'Failed to update role', 'error');
@@ -181,7 +250,8 @@ export const SuperAdminProvider = ({ children }) => {
   const deleteRole = async (id) => {
     try {
       await adminAPI.deleteRole(id);
-      await fetchRoles();
+      await Promise.all([fetchRoles(), fetchRoleHistory()]);
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
       showToast('Role deleted successfully!');
     } catch (err) {
       showToast(err.response?.data?.error?.message || 'Failed to delete role', 'error');
@@ -191,7 +261,8 @@ export const SuperAdminProvider = ({ children }) => {
   const addDept = async (dept) => {
     try {
       await superAdminAPI.createPlatformDepartment(dept);
-      await fetchDepartments();
+      await Promise.all([fetchDepartments(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('department_updated'));
       showToast('Department created successfully!');
       return true;
     } catch (err) {
@@ -203,7 +274,8 @@ export const SuperAdminProvider = ({ children }) => {
   const updateDept = async (id, updates) => {
     try {
       await superAdminAPI.updatePlatformDepartment(id, updates);
-      await fetchDepartments();
+      await Promise.all([fetchDepartments(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('department_updated'));
       showToast('Department updated successfully!');
       return true;
     } catch (err) {
@@ -215,7 +287,8 @@ export const SuperAdminProvider = ({ children }) => {
   const deleteDept = async (id) => {
     try {
       await superAdminAPI.deletePlatformDepartment(id);
-      await fetchDepartments();
+      await Promise.all([fetchDepartments(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('department_updated'));
       showToast('Department deleted successfully!');
       return true;
     } catch (err) {
@@ -227,7 +300,8 @@ export const SuperAdminProvider = ({ children }) => {
   const addUser = async (user) => {
     try {
       await superAdminAPI.createUser(user);
-      await fetchUsers();
+      await Promise.all([fetchUsers(), fetchDepartments(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('user_updated'));
       showToast('User created successfully!');
       return true;
     } catch (err) {
@@ -239,7 +313,8 @@ export const SuperAdminProvider = ({ children }) => {
   const updateUser = async (id, updates) => {
     try {
       await superAdminAPI.updateUser(id, updates);
-      await fetchUsers();
+      await Promise.all([fetchUsers(), fetchDepartments(), fetchPlatformStats()]);
+      window.dispatchEvent(new CustomEvent('user_updated'));
       showToast('User updated successfully!');
       return true;
     } catch (err) {
@@ -251,7 +326,16 @@ export const SuperAdminProvider = ({ children }) => {
   const deleteUser = async (id) => {
     try {
       await superAdminAPI.deleteUser(id);
-      await fetchUsers();
+      await Promise.all([
+        fetchUsers(),
+        fetchDepartments(),
+        fetchPlatformStats(),
+        fetchRoleHistory(),
+        fetchAuditLogs()
+      ]);
+      window.dispatchEvent(new CustomEvent('user_updated'));
+      window.dispatchEvent(new CustomEvent('department_updated'));
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
       showToast('User deleted successfully!');
     } catch (err) {
       showToast(err.response?.data?.error?.message || 'Failed to delete user', 'error');
@@ -269,15 +353,17 @@ export const SuperAdminProvider = ({ children }) => {
   };
 
   const value = {
-    users, addUser, updateUser, deleteUser, toggleUserActive, changeUserRole,
+    users, addUser, updateUser, deleteUser, toggleUserActive, changeUserRole, revokeUserRole,
     organizations, createOrganization, deleteOrganization, createAdminForOrg,
     departments, addDept, updateDept, deleteDept,
     roles, addRole, updateRole, deleteRole,
+    roleHistory, fetchRoleHistory,
     activityLogs, fetchUserAuditLogs,
     platformStats,
     loading,
     showToast,
-    refetch: { fetchPlatformStats, fetchOrganizations, fetchUsers, fetchAuditLogs, fetchDepartments },
+    refreshAll,
+    refetch: { fetchPlatformStats, fetchOrganizations, fetchUsers, fetchAuditLogs, fetchDepartments, fetchRoles, fetchRoleHistory, refreshAll },
   };
 
   return (

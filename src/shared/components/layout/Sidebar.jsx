@@ -53,19 +53,19 @@ const Sidebar = ({ collapsed, setCollapsed, allRoles, onItemClick }) => {
   let roleItems = baseItems;
 
   // Always filter sidebar items by permissions, except for SuperAdmin.
-  // Items with permission='always' or permission='dashboard' always show (safe defaults).
+  // Items with permission='always' always show (for SuperAdmin panels).
   if (!isSuperAdmin) {
     roleItems = baseItems.map(item => {
       if (item.group && item.items) {
         const filteredSubItems = item.items.filter(sub => {
           const permKey = sub.permission;
-          if (!permKey || permKey === 'always' || permKey === 'dashboard') return true;
+          if (!permKey || permKey === 'always') return true;
           return hasModuleAccess(permKey, currentScope);
         });
         return { ...item, items: filteredSubItems };
       } else {
         const permKey = item.permission;
-        if (!permKey || permKey === 'always' || permKey === 'dashboard') return item;
+        if (!permKey || permKey === 'always') return item;
         return hasModuleAccess(permKey, currentScope) ? item : null;
       }
     }).filter(item => {
@@ -98,30 +98,61 @@ const Sidebar = ({ collapsed, setCollapsed, allRoles, onItemClick }) => {
     }
   }, [location.pathname, roleItems]);
 
-  // Preserve sidebar scroll position across route changes.
-  // Save before re-render, restore after DOM settles.
-  const savedScrollRef = useRef(0);
+  // Preserve sidebar scroll position across route changes and re-renders
+  const savedScrollRef = useRef(
+    parseInt(sessionStorage.getItem('hcm_sidebar_scroll') || '0', 10)
+  );
 
   // Capture sidebar scroll position on every scroll event
   useEffect(() => {
     const container = navContainerRef.current;
     if (!container) return;
+
+    if (savedScrollRef.current > 0) {
+      container.scrollTop = savedScrollRef.current;
+    }
+
     const handleScroll = () => {
-      savedScrollRef.current = container.scrollTop;
+      if (container) {
+        savedScrollRef.current = container.scrollTop;
+        sessionStorage.setItem('hcm_sidebar_scroll', String(container.scrollTop));
+      }
     };
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // After route change, restore the sidebar scroll position
+  // After route change, ensure active item is visible in sidebar
   useEffect(() => {
     const container = navContainerRef.current;
     if (!container) return;
-    // Use rAF to ensure DOM has re-rendered before restoring
-    requestAnimationFrame(() => {
-      container.scrollTop = savedScrollRef.current;
-    });
-  }, [location.pathname]);
+
+    const scrollActiveIntoView = () => {
+      const activeEl = activeItemRef.current || container.querySelector('.sidebar-item-active');
+      if (activeEl) {
+        const containerRect = container.getBoundingClientRect();
+        const activeRect = activeEl.getBoundingClientRect();
+
+        const isAbove = activeRect.top < containerRect.top + 10;
+        const isBelow = activeRect.bottom > containerRect.bottom - 10;
+
+        if (isAbove || isBelow) {
+          activeEl.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest'
+          });
+        }
+      }
+    };
+
+    const t1 = setTimeout(scrollActiveIntoView, 60);
+    const t2 = setTimeout(scrollActiveIntoView, 250);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [location.pathname, roleItems]);
 
   // Compute active item information for Scope Indicator
   const getActiveItemInfo = () => {
@@ -153,12 +184,18 @@ const Sidebar = ({ collapsed, setCollapsed, allRoles, onItemClick }) => {
     return (
       <NavLink
         to={item.path}
-        onClick={onItemClick}
         ref={isCurrentActive ? activeItemRef : null}
+        onClick={(e) => {
+          if (navContainerRef.current) {
+            savedScrollRef.current = navContainerRef.current.scrollTop;
+            sessionStorage.setItem('hcm_sidebar_scroll', String(navContainerRef.current.scrollTop));
+          }
+          if (onItemClick) onItemClick(e);
+        }}
         className={({ isActive }) =>
           cn(
             "sidebar-item group relative",
-            isActive && "sidebar-item-active",
+            (isActive || isCurrentActive) && "sidebar-item-active",
             !isExpanded && "justify-center px-2"
           )
         }

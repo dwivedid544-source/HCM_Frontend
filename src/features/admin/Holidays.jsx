@@ -23,6 +23,8 @@ import ActionDropdown from '../../shared/components/admin/ActionDropdown';
 import WeekendRuleModal from '../../shared/components/admin/WeekendRuleModal';
 import CalendarModal from '../../shared/components/admin/CalendarModal';
 import AssignmentModal from '../../shared/components/admin/AssignmentModal';
+import PermissionGate from '../../shared/components/common/PermissionGate';
+import { usePermission } from '../../hooks/usePermission';
 import { useDateFormat } from '../../hooks/useDateFormat';
 
 
@@ -47,6 +49,7 @@ const daysUntil = (dateStr) => {
 
 const HolidayRow = ({ hday, onEdit, onDelete, showToast }) => {
   const { formatDate } = useDateFormat();
+  const { check: hasPerm } = usePermission('holidays');
   const status = getStatus(hday.date);
   const isPassed = status === 'Passed';
   const days = !isPassed ? daysUntil(hday.date) : null;
@@ -93,10 +96,10 @@ const HolidayRow = ({ hday, onEdit, onDelete, showToast }) => {
       <td className="px-4 sm:px-8 py-4 sm:py-5 text-right">
         <ActionDropdown 
           actions={[
-            { label: 'Edit Holiday', icon: Edit3, onClick: () => onEdit(hday) },
-            { label: 'Duplicate', icon: Globe2, onClick: () => showToast('Holiday duplicated successfully') },
-            { label: 'Delete', icon: Trash2, danger: true, onClick: () => onDelete(hday) },
-          ]}
+            hasPerm('edit') ? { label: 'Edit Holiday', icon: Edit3, onClick: () => onEdit(hday) } : null,
+            hasPerm('create') ? { label: 'Duplicate', icon: Globe2, onClick: () => showToast('Holiday duplicated successfully') } : null,
+            hasPerm('delete') ? { label: 'Delete', icon: Trash2, danger: true, onClick: () => onDelete(hday) } : null,
+          ].filter(Boolean)}
         />
       </td>
     </tr>
@@ -104,7 +107,7 @@ const HolidayRow = ({ hday, onEdit, onDelete, showToast }) => {
 };
 
 const Holidays = () => {
-  const { holidays, deleteHoliday, showToast, calendars, deleteCalendar, createCalendar, updateCalendar, assignCalendar } = useAdmin();
+  const { holidays, deleteHoliday, showToast, calendars, deleteCalendar, createCalendar, updateCalendar, assignCalendar, removeAssignment, users, departments } = useAdmin();
   const [activeTab, setActiveTab] = useState('Holidays');
   const [selectedCalendarId, setSelectedCalendarId] = useState('');
   const tabs = ['Work Calendars', 'Holidays', 'Weekend Rules', 'Assignments'];
@@ -198,6 +201,7 @@ const Holidays = () => {
           <p className="text-slate-500 font-medium tracking-tight">Configure the corporate holiday calendar and synchronized regional events</p>
         </div>
         <div className="flex items-center gap-3">
+          <PermissionGate module="holidays" action="create">
           <button
             onClick={() => {
               if (activeTab === 'Holidays') {
@@ -217,6 +221,7 @@ const Holidays = () => {
             <Plus size={18} />
             <span>Add {activeTab === 'Holidays' ? 'Holiday' : activeTab === 'Work Calendars' ? 'Calendar' : activeTab === 'Weekend Rules' ? 'Rule' : 'Assignment'}</span>
           </button>
+          </PermissionGate>
         </div>
       </div>
 
@@ -468,17 +473,45 @@ const Holidays = () => {
           {selectedCalendarId ? (
             <table className="w-full text-left text-sm text-slate-500 mt-4">
               <thead className="bg-slate-50 text-xs text-slate-700 uppercase">
-                <tr><th className="px-4 py-3">Entity Type</th><th className="px-4 py-3">Entity ID</th><th className="px-4 py-3">Effective From</th></tr>
+                <tr>
+                  <th className="px-4 py-3">Entity Type</th>
+                  <th className="px-4 py-3">Assigned To</th>
+                  <th className="px-4 py-3">Effective From</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
               </thead>
               <tbody>
-                {calendars.find(c => c.id === selectedCalendarId)?.assignments?.map(a => (
-                  <tr key={a.id} className="border-b">
-                    <td className="px-4 py-4 font-bold text-slate-900">{a.entityType}</td>
-                    <td className="px-4 py-4">{a.entityId}</td>
-                    <td className="px-4 py-4">{new Date(a.effectiveFrom).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-                {(!calendars.find(c => c.id === selectedCalendarId)?.assignments?.length) && <tr><td colSpan="3" className="text-center py-4">No Assignments found.</td></tr>}
+                {calendars.find(c => c.id === selectedCalendarId)?.assignments?.map(a => {
+                  let entityLabel = a.entityId;
+                  if (a.entityType === 'EMPLOYEE') {
+                    const u = users?.find(user => user.id === a.entityId);
+                    if (u) entityLabel = `${u.name} (${u.email})`;
+                  } else if (a.entityType === 'DEPARTMENT') {
+                    const d = departments?.find(dept => dept.id === a.entityId);
+                    if (d) entityLabel = d.name;
+                  }
+                  return (
+                    <tr key={a.id} className="border-b">
+                      <td className="px-4 py-4 font-bold text-slate-900">{a.entityType}</td>
+                      <td className="px-4 py-4">{entityLabel}</td>
+                      <td className="px-4 py-4">{new Date(a.effectiveFrom).toLocaleDateString()}</td>
+                      <td className="px-4 py-4 text-right">
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to remove this assignment?')) {
+                              removeAssignment(a.id);
+                            }
+                          }}
+                          className="text-red-500 hover:text-red-700 p-2 font-bold inline-flex items-center gap-1"
+                        >
+                          <Trash2 size={16} />
+                          <span>Remove</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {(!calendars.find(c => c.id === selectedCalendarId)?.assignments?.length) && <tr><td colSpan="4" className="text-center py-4">No Assignments found.</td></tr>}
               </tbody>
             </table>
           ) : (

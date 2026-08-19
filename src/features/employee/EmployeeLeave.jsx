@@ -26,6 +26,7 @@ import { useEmployee } from '../../context/EmployeeContext';
 import CenterModal from '../../shared/components/layout/CenterModal';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import DatePicker from '../../shared/components/common/DatePicker';
+import PermissionGate from '../../shared/components/common/PermissionGate';
 
 const EmployeeLeave = () => {
   const { leaves, requestLeave, cancelLeave, showToast } = useEmployee();
@@ -148,6 +149,7 @@ const EmployeeLeave = () => {
             <Download size={18} />
             <span>Report</span>
           </button>
+          <PermissionGate module="leave" action="create">
           <button 
             onClick={() => setIsRequestModalOpen(true)}
             className="btn-primary px-8 py-2.5 font-bold flex items-center justify-center gap-2 shadow-xl shadow-primary-200 active:scale-95 transition-all"
@@ -155,6 +157,7 @@ const EmployeeLeave = () => {
              <Plus size={18} />
              <span>Request Time Off</span>
           </button>
+          </PermissionGate>
         </div>
       </div>
 
@@ -278,7 +281,9 @@ const EmployeeLeave = () => {
                                )}
                                <div className="flex items-center justify-end gap-2">
                                  {item.status === 'Pending' && (
+                                   <PermissionGate module="leave" action="delete">
                                    <button onClick={async () => { await cancelLeave(item.id); }} className="text-[9px] font-bold text-rose-500 font-bold hover:underline">Cancel</button>
+                                   </PermissionGate>
                                  )}
                                  <p className="text-[10px] font-black text-primary-600 font-bold">{item.managerComment ? 'Reviewed' : 'Awaiting Review'}</p>
                               </div>

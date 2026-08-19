@@ -187,14 +187,17 @@ const DepartmentModal = ({ isOpen, onClose, deptToEdit = null }) => {
                           <UserCircle className="absolute left-4 top-4 text-slate-300" size={18} />
                           <select 
                             name="head"
-                            value={formData.head}
+                            value={formData.head || ''}
                             onChange={handleChange}
                             className="input-field h-14 pl-12 bg-slate-50 border-transparent font-bold text-slate-700 appearance-none"
                           >
-                            <option value="">Select Manager</option>
-                            {users.filter(u => u.role === 'Admin' || u.role === 'Manager' || u.role === 'HR').map(u => (
-                              <option key={u.id} value={u.name}>{u.name}</option>
-                            ))}
+                            <option value="">None (No Head Assigned)</option>
+                            {users
+                              .filter(u => (u.status === 'Active' || u.status === 'active') && u.role !== 'Candidate' && u.role !== 'CANDIDATE')
+                              .map(u => (
+                                <option key={u.id} value={u.name}>{u.name} ({u.role})</option>
+                              ))
+                            }
                           </select>
                         </div>
                     </div>

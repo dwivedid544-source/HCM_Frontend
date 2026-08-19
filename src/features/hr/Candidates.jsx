@@ -6,7 +6,7 @@ import {
   Download, CheckCircle2, Clock, 
   X, Eye, Mail, Phone, Calendar, ArrowRight, 
   Briefcase, Star, MapPin, ExternalLink, Trash2,
-  Sparkles, Upload, Users, User, Edit3
+  Sparkles, Upload, Users, User, Edit3, ShieldCheck
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useHR } from '../../context/HRContext';
@@ -162,17 +162,17 @@ const Candidates = () => {
           <p className="hcm-page-subtitle">Review applicants and move top talent through the pipeline</p>
         </div>
         <div className="flex items-center gap-3">
-          <PermissionGate module="candidates" action="view">
-          <div className="flex gap-2">
+          <PermissionGate module="candidates" action="create">
             <button onClick={() => setIsImportModalOpen(true)} className="btn-secondary flex items-center gap-2">
               <Upload size={18} />
               <span className="hidden sm:inline">Import</span>
             </button>
+          </PermissionGate>
+          <PermissionGate module="candidates" action="view">
             <button onClick={handleExportCandidates} className="btn-secondary flex items-center gap-2">
               <Download size={18} />
               <span className="hidden sm:inline">Bulk Export</span>
             </button>
-          </div>
           </PermissionGate>
           <PermissionGate module="candidates" action="create">
           <button onClick={handleOpenCreate} className="btn-primary flex items-center gap-2 shadow-lg shadow-primary-500/20">
@@ -294,6 +294,7 @@ const Candidates = () => {
                     </td>
                     <td className="hcm-td text-right">
                       <div className="flex justify-end gap-1">
+                        <button onClick={() => navigate(`/admin/roles?role=Candidate&user=${cand.id}`)} className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-lg transition-all" title="Permissions Matrix"><ShieldCheck size={18} /></button>
                         <button onClick={async () => {
                           setSelectedCandidate(cand);
                           try { await hrAPI.trackCandidateProfile(cand.id, { action: 'view' }); } catch(e) {}
@@ -333,6 +334,10 @@ const Candidates = () => {
                      </div>
                   </div>
                   <div className="flex items-center gap-2">
+                      <button onClick={() => navigate(`/admin/roles?role=Candidate&user=${selectedCandidate.id}`)} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-400 rounded-xl text-xs font-bold transition-all" title="Permissions Matrix">
+                         <ShieldCheck size={16} />
+                         <span>Permissions</span>
+                      </button>
                       <button onClick={() => handleOpenEdit(selectedCandidate)} className="p-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" title="Edit">
                          <Edit3 size={20} />
                       </button>

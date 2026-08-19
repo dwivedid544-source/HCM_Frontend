@@ -1,17 +1,33 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BarChart3, X, ChevronRight, CheckCircle2, Download } from 'lucide-react';
-import { useAdmin } from '../../context/AdminContext';
-import { cn } from '../../utils/cn';
+import { BarChart3, X, ChevronRight, CheckCircle2, Download, FileText } from 'lucide-react';
+import { useAdmin } from '../../../context/AdminContext';
+import { generateReportPDF } from '../../../utils/reportPdfGenerator';
+import { cn } from '../../../utils/cn';
 
 const steps = ['Select Modules', 'Configure Visuals', 'Export & Run'];
 
 const ReportBuilderWizard = ({ isOpen, onClose, initialCategory = null }) => {
-  const { showToast } = useAdmin();
+  const adminContext = useAdmin();
+  const { 
+    showToast, 
+    addCustomReport,
+    users = [],
+    departments = [],
+    payrollList = [],
+    benefits = [],
+    shifts = [],
+    holidays = [],
+    policies = [],
+    systemLogs = [],
+    aiModules = []
+  } = adminContext || {};
+
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedModules, setSelectedModules] = useState(initialCategory ? [initialCategory] : []);
   const [visuals, setVisuals] = useState('Charts & Tables');
   const [status, setStatus] = useState('idle');
+  const [generatedReport, setGeneratedReport] = useState(null);
 
   const modules = ['Workforce Analytics', 'Financials', 'Hiring Performance', 'Compliance', 'AI Insights'];
 
@@ -21,6 +37,7 @@ const ReportBuilderWizard = ({ isOpen, onClose, initialCategory = null }) => {
       setCurrentStep(0);
       setSelectedModules(initialCategory ? [initialCategory] : []);
       setStatus('idle');
+      setGeneratedReport(null);
     }
   }, [isOpen, initialCategory]);
 
@@ -31,9 +48,48 @@ const ReportBuilderWizard = ({ isOpen, onClose, initialCategory = null }) => {
   const handleRun = () => {
     setStatus('generating');
     setTimeout(() => {
+      const newReport = {
+        id: 'RPT-' + Date.now().toString().slice(-6),
+        title: selectedModules.length === 1 
+          ? `${selectedModules[0]} Report` 
+          : selectedModules.length > 1
+          ? `Executive Multi-Module Report (${selectedModules.length} Modules)`
+          : 'Organization Analytics Report',
+        modules: [...selectedModules],
+        format: visuals,
+        createdAt: new Date().toISOString(),
+        status: 'Generated',
+        size: `${Math.floor(Math.random() * 40) + 120} KB`
+      };
+
+      if (addCustomReport) {
+        addCustomReport(newReport);
+      }
+      setGeneratedReport(newReport);
       setStatus('finished');
-      showToast('Custom Report generated successfully.');
-    }, 2500);
+      showToast('Custom Report compiled & saved to dashboard.');
+    }, 1200);
+  };
+
+  const handleDownload = () => {
+    if (!generatedReport) return;
+    try {
+      generateReportPDF(generatedReport, {
+        users,
+        departments,
+        payrollList,
+        benefits,
+        shifts,
+        holidays,
+        policies,
+        systemLogs,
+        aiModules
+      });
+      showToast('PDF report downloaded successfully');
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      showToast('Failed to download PDF report', 'error');
+    }
   };
 
   return (
@@ -51,7 +107,7 @@ const ReportBuilderWizard = ({ isOpen, onClose, initialCategory = null }) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-0 m-auto w-full max-w-3xl max-h-[85vh] bg-white shadow-2xl z-[120] flex flex-col rounded-[2.5rem] overflow-hidden"
+            className="fixed inset-0 m-auto w-[calc(100%-2rem)] sm:w-full max-w-3xl max-h-[85vh] bg-white shadow-2xl z-[120] flex flex-col rounded-[2.5rem] overflow-hidden"
           >
             <div className="p-8 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -82,7 +138,7 @@ const ReportBuilderWizard = ({ isOpen, onClose, initialCategory = null }) => {
                {currentStep === 0 && (
                  <div className="space-y-6 animate-fade-in">
                     <h3 className="font-extrabold text-slate-900 dark:text-white">Which datasets should be included?</h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                        {modules.map(mod => (
                           <div key={mod} onClick={() => toggleModule(mod)} className={cn("p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between", selectedModules.includes(mod) ? "border-indigo-600 bg-indigo-50/20" : "border-slate-100 bg-white hover:border-slate-200")}>
                              <span className="font-bold text-slate-700">{mod}</span>
@@ -129,14 +185,17 @@ const ReportBuilderWizard = ({ isOpen, onClose, initialCategory = null }) => {
                     )}
                     {status === 'finished' && (
                        <div className="text-center space-y-6">
-                          <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
+                          <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-sm">
                              <CheckCircle2 size={40} />
                           </div>
                           <div>
-                             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Custom Report Ready</h3>
-                             <p className="text-sm font-medium text-slate-500 mt-2">Available in your downloads.</p>
+                             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{generatedReport?.title || 'Custom Report Ready'}</h3>
+                             <p className="text-sm font-medium text-slate-500 mt-2">Saved to your Reports dashboard and ready for download.</p>
                           </div>
-                          <button onClick={onClose} className="px-8 py-3.5 bg-slate-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 mx-auto"><Download size={18} /> Download Now</button>
+                          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                             <button onClick={handleDownload} className="px-8 py-3.5 bg-slate-900 hover:bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all"><Download size={18} /> Download PDF</button>
+                             <button onClick={onClose} className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold transition-all">Close</button>
+                          </div>
                        </div>
                     )}
                  </div>

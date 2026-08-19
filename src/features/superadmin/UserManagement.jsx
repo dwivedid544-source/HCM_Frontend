@@ -15,7 +15,8 @@ import {
   UserCheck,
   Power,
   RefreshCw,
-  Activity
+  Activity,
+  DollarSign
 } from 'lucide-react';
 import PageHeader from '../../shared/components/layout/PageHeader';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +35,7 @@ const UserManagement = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [salary, setSalary] = useState('');
   const [selectedRole, setSelectedRole] = useState('Employee');
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedActualDeptId, setSelectedActualDeptId] = useState('');
@@ -45,6 +47,7 @@ const UserManagement = () => {
     setName('');
     setEmail('');
     setPassword('');
+    setSalary('');
     setSelectedRole('Employee');
     setSelectedDept(organizations[0]?.name || '');
     setSelectedActualDeptId('');
@@ -56,6 +59,7 @@ const UserManagement = () => {
     setName(user.name);
     setEmail(user.email);
     setPassword('');
+    setSalary(user.baseSalary || user.monthlyCTC || '');
     setSelectedRole(user.role);
     setSelectedDept(user.department === 'Platform Level' ? '' : user.department);
     setSelectedActualDeptId(user.actualDepartmentId || '');
@@ -66,6 +70,8 @@ const UserManagement = () => {
     e.preventDefault();
     if (!name || !email) return;
 
+    const salaryNumber = salary !== '' && !isNaN(Number(salary)) ? Number(salary) : 0;
+
     let success = false;
     if (editingUser) {
       success = await updateUser(editingUser.id, {
@@ -75,6 +81,9 @@ const UserManagement = () => {
         role: selectedRole,
         department: selectedDept,
         departmentId: selectedActualDeptId || undefined,
+        salary: salaryNumber,
+        baseSalary: salaryNumber,
+        monthlyCTC: salaryNumber
       });
     } else {
       success = await addUser({
@@ -84,7 +93,10 @@ const UserManagement = () => {
         role: selectedRole,
         department: selectedDept,
         departmentId: selectedActualDeptId || undefined,
-        status: 'active'
+        status: 'active',
+        salary: salaryNumber,
+        baseSalary: salaryNumber,
+        monthlyCTC: salaryNumber
       });
     }
 
@@ -176,6 +188,7 @@ const UserManagement = () => {
                 <th className="hcm-th p-4 pl-6">User Info</th>
                 <th className="hcm-th p-4">Organization</th>
                 <th className="hcm-th p-4">System Role</th>
+                <th className="hcm-th p-4">Allocated Salary</th>
                 <th className="hcm-th p-4">Status</th>
                 <th className="hcm-th p-4 text-right pr-6">Actions</th>
               </tr>
@@ -216,6 +229,17 @@ const UserManagement = () => {
                           <Shield size={12} />
                           {user.role}
                         </span>
+                      </td>
+                      <td className="hcm-td p-4">
+                        {(user.baseSalary || user.monthlyCTC) ? (
+                          <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400 font-mono text-xs bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-lg border border-emerald-100 dark:border-emerald-800/30">
+                            ${Number(user.baseSalary || user.monthlyCTC).toLocaleString()}/mo
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium italic">
+                            Not Allocated
+                          </span>
+                        )}
                       </td>
                       <td className="hcm-td p-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold uppercase ${user.status === 'suspended' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
@@ -459,6 +483,31 @@ const UserManagement = () => {
                     </select>
                   </div>
                 )}
+
+                <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-700/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                      <DollarSign size={14} className="text-emerald-500" />
+                      Allocated Monthly Base Salary
+                    </label>
+                    <span className="text-[11px] text-slate-400 font-medium">USD ($/month)</span>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-2.5 text-slate-400 font-bold text-sm">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="e.g. 5500 (Leave blank or 0 if not allocated)"
+                      value={salary}
+                      onChange={(e) => setSalary(e.target.value)}
+                      className="input-field pl-8 font-mono font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    This salary will be explicitly saved in the employee's compensation profile and used for Payroll and Compensation calculations.
+                  </p>
+                </div>
 
                 <div className="pt-4 flex items-center gap-3 border-t border-slate-50 dark:border-slate-800/80">
                   <button

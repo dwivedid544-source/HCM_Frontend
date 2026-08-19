@@ -122,13 +122,14 @@ const PayrollCenter = () => {
     });
 
     const ungeneratedPayslips = ungeneratedUsers.map(u => {
+      const basic = Number(u.baseSalary || u.monthlyCTC || 0);
+      const isAllocated = basic > 0;
       const roleStr = (u.role || 'employee').toLowerCase();
-      const basic = u.baseSalary || payrollSettings?.baseSalaries?.[roleStr] || 5000;
-      const allowance = payrollSettings?.allowances?.[roleStr] || 1000;
-      const taxRate = payrollSettings?.taxRate || 10;
-      const pfRate = payrollSettings?.pfRate || 12;
-      const tax = Math.round((basic * taxRate) / 100);
-      const pf = Math.round((basic * pfRate) / 100);
+      const allowance = isAllocated ? (payrollSettings?.allowances?.[roleStr] || 0) : 0;
+      const taxRate = isAllocated ? (payrollSettings?.taxRate || 0) : 0;
+      const pfRate = isAllocated ? (payrollSettings?.pfRate || 0) : 0;
+      const tax = isAllocated ? Math.round((basic * taxRate) / 100) : 0;
+      const pf = isAllocated ? Math.round((basic * pfRate) / 100) : 0;
       const deductions = tax + pf;
       
       return {
@@ -143,9 +144,9 @@ const PayrollCenter = () => {
         pf,
         tax,
         deductions,
-        net: (basic + allowance) - deductions,
+        net: isAllocated ? ((basic + allowance) - deductions) : 0,
         month: currentMonth,
-        status: 'Unprocessed'
+        status: isAllocated ? 'Draft' : 'Unallocated'
       };
     });
 
@@ -189,14 +190,15 @@ const PayrollCenter = () => {
 
   // --- 6 Compact KPI Card metrics derived from filtered records ---
   const kpis = useMemo(() => {
-    const totalPayroll = filteredRecords.reduce((sum, p) => sum + convertAmount(p.net || 0, p.currency), 0);
+    const allocated = filteredRecords.filter(p => (p.basic || 0) > 0);
+    const totalPayroll = allocated.reduce((sum, p) => sum + convertAmount(p.net || 0, p.currency), 0);
     const employeesPaid = filteredRecords.filter(p => p.status === 'Paid').length;
     const pendingPayroll = filteredRecords.filter(p => ['Draft', 'Pending', 'Processing', 'Approved'].includes(p.status)).length;
-    const avgSalary = filteredRecords.length ? totalPayroll / filteredRecords.length : 0;
+    const avgSalary = allocated.length ? totalPayroll / allocated.length : 0;
 
     // Total deductions = tax
-    const totalDeductions = filteredRecords.reduce((sum, p) => sum + convertAmount(p.tax || 0, p.currency), 0);
-    const grossPayroll = filteredRecords.reduce((sum, p) => sum + convertAmount((p.basic || 0) + (p.allowance || 0) + (p.bonus || 0), p.currency), 0);
+    const totalDeductions = allocated.reduce((sum, p) => sum + convertAmount(p.tax || 0, p.currency), 0);
+    const grossPayroll = allocated.reduce((sum, p) => sum + convertAmount((p.basic || 0) + (p.allowance || 0) + (p.bonus || 0), p.currency), 0);
 
     return {
       totalPayroll,
@@ -584,27 +586,39 @@ const PayrollCenter = () => {
                         <td className="p-3 font-mono text-slate-400">{p.displayId || p.employeeId}</td>
                         <td className="p-3 font-bold text-slate-800 dark:text-slate-200">{p.employeeName}</td>
                         <td className="p-3 text-slate-500">{p.department}</td>
-                        <td className="p-3 font-medium">{formatCurrency(p.basic, p.currency)}</td>
-                        <td className="p-3 text-slate-500">{formatCurrency(p.allowance + p.bonus, p.currency)}</td>
-                        <td className="p-3 text-rose-500">{formatCurrency(p.deductions || 0, p.currency)}</td>
-                        <td className="p-3 font-bold text-slate-800 dark:text-white">{formatCurrency(p.net, p.currency)}</td>
+                        <td className="p-3 font-medium font-mono">
+                          {p.basic > 0 ? (
+                            formatCurrency(p.basic, p.currency)
+                          ) : (
+                            <span className="text-amber-500 font-normal italic text-[11px]">Not Set</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-500 font-mono">{p.basic > 0 ? formatCurrency(p.allowance + p.bonus, p.currency) : '—'}</td>
+                        <td className="p-3 text-rose-500 font-mono">{p.basic > 0 ? formatCurrency(p.deductions || 0, p.currency) : '—'}</td>
+                        <td className="p-3 font-bold text-slate-800 dark:text-white font-mono">{p.basic > 0 ? formatCurrency(p.net, p.currency) : '$0.00'}</td>
                         <td className="p-3 text-slate-400 font-medium">{p.month}</td>
                         <td className="p-3">
-                          <select
-                            value={p.status}
-                            onChange={(e) => handleQuickStatusChange(p.id, e.target.value)}
-                            className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider outline-none border border-transparent ${p.status === 'Paid' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border-emerald-100 dark:border-emerald-900/30' :
-                                p.status === 'Approved' ? 'bg-primary-50 dark:bg-primary-950/20 text-primary-600 border-primary-100 dark:border-primary-900/30' :
-                                  p.status === 'Processing' ? 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' :
-                                    p.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 border-amber-100 dark:border-amber-900/30' :
-                                      p.status === 'Rejected' ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 border-rose-100 dark:border-rose-900/30' :
-                                        'bg-slate-50 dark:bg-slate-850 text-slate-500 border-slate-200 dark:border-slate-700'
-                              }`}
-                          >
-                            {['Draft', 'Pending', 'Processing', 'Approved', 'Paid', 'Rejected'].map(s => (
-                              <option key={s} value={s}>{s}</option>
-                            ))}
-                          </select>
+                          {p.status === 'Unallocated' || p.basic === 0 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-50 dark:bg-amber-950/20 text-amber-600 border border-amber-200 dark:border-amber-900/30 inline-flex items-center gap-1">
+                              Not Allocated
+                            </span>
+                          ) : (
+                            <select
+                              value={p.status}
+                              onChange={(e) => handleQuickStatusChange(p.id, e.target.value)}
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider outline-none border border-transparent ${p.status === 'Paid' ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border-emerald-100 dark:border-emerald-900/30' :
+                                  p.status === 'Approved' ? 'bg-primary-50 dark:bg-primary-950/20 text-primary-600 border-primary-100 dark:border-primary-900/30' :
+                                    p.status === 'Processing' ? 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 border-indigo-100 dark:border-indigo-900/30' :
+                                      p.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 border-amber-100 dark:border-amber-900/30' :
+                                        p.status === 'Rejected' ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 border-rose-100 dark:border-rose-900/30' :
+                                          'bg-slate-50 dark:bg-slate-850 text-slate-500 border-slate-200 dark:border-slate-700'
+                                }`}
+                            >
+                              {['Draft', 'Pending', 'Processing', 'Approved', 'Paid', 'Rejected'].map(s => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
+                          )}
                         </td>
                         <td className="p-3 text-right pr-4">
                           <div className="flex items-center justify-end gap-1.5">

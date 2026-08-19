@@ -93,6 +93,15 @@ const UserModal = ({ isOpen, onClose, userToEdit = null }) => {
         ...userToEdit,
         sendInvite: false
       });
+      setCompData({
+        baseSalary: userToEdit.baseSalary || userToEdit.monthlyCTC || '',
+        monthlyCTC: userToEdit.monthlyCTC || userToEdit.baseSalary || '',
+        annualCTC: ((userToEdit.monthlyCTC || userToEdit.baseSalary || 0) * 12) || '',
+        effectiveDate: userToEdit.joinDate || '',
+        reason: 'Profile Update',
+        salaryStructureId: '',
+        salaryVersionId: ''
+      });
       // Set realistic permissions based on role
       setPermissions({
         adminSettings: userToEdit.role === 'Super Admin' || userToEdit.role === 'Admin',
@@ -235,7 +244,13 @@ const UserModal = ({ isOpen, onClose, userToEdit = null }) => {
     setIsSaving(true);
     try {
       if (userToEdit) {
-        await updateUser(userToEdit.id, formData);
+        const payload = {
+          ...formData,
+          salary: compData.monthlyCTC || compData.baseSalary ? Number(compData.monthlyCTC || compData.baseSalary) : undefined,
+          baseSalary: compData.baseSalary ? Number(compData.baseSalary) : undefined,
+          monthlyCTC: compData.monthlyCTC ? Number(compData.monthlyCTC) : undefined,
+        };
+        await updateUser(userToEdit.id, payload);
       } else {
         const payload = {
           ...formData,

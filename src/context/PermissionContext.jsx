@@ -38,7 +38,7 @@ export const PermissionProvider = ({ children }) => {
         roleName: rName, 
         isCustomOverride: isCust, 
         landingPage: lPage 
-      } = response.data.data;
+      } = response.data?.data || {};
       
       setIsSuperAdmin(isSa);
       setPermissions(isSa ? 'FULL_ACCESS' : perms);
@@ -49,8 +49,8 @@ export const PermissionProvider = ({ children }) => {
       setLandingPage(lPage || null);
     } catch (err) {
       console.error("Failed to fetch permissions", err);
-      setPermissions([]);
-      setEmployeePermissions([]);
+      setPermissions({});
+      setEmployeePermissions({});
     } finally {
       setLoading(false);
     }
@@ -61,6 +61,21 @@ export const PermissionProvider = ({ children }) => {
       fetchPermissions();
     }
   }, [authLoading, isAuthenticated, fetchPermissions]);
+
+  // Global event listener for instant permission sync across components / tabs
+  useEffect(() => {
+    const handlePermissionsUpdated = () => {
+      fetchPermissions();
+    };
+
+    window.addEventListener('permissions_updated', handlePermissionsUpdated);
+    window.addEventListener('focus', handlePermissionsUpdated);
+
+    return () => {
+      window.removeEventListener('permissions_updated', handlePermissionsUpdated);
+      window.removeEventListener('focus', handlePermissionsUpdated);
+    };
+  }, [fetchPermissions]);
 
   // Expose the same helpers as permissionUtils but bound to current state
   const hasPermission = useCallback((module, action = 'view', scope = null) => {
@@ -78,6 +93,11 @@ export const PermissionProvider = ({ children }) => {
     }
     return isPermitted(permissions, module, 'view');
   }, [permissions, employeePermissions, previewRole]);
+
+  const triggerGlobalPermissionSync = useCallback(() => {
+    fetchPermissions();
+    window.dispatchEvent(new CustomEvent('permissions_updated'));
+  }, [fetchPermissions]);
 
   // Dynamic overrides for preview mode
   const activeIsSuperAdmin = previewRole ? (previewRole.toLowerCase() === 'superadmin') : isSuperAdmin;
@@ -98,7 +118,8 @@ export const PermissionProvider = ({ children }) => {
       landingPage,
       hasPermission,
       hasModuleAccess,
-      refreshPermissions: fetchPermissions
+      refreshPermissions: fetchPermissions,
+      triggerGlobalPermissionSync
     }}>
       {children}
     </PermissionContext.Provider>

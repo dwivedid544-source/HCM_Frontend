@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, Mail, Phone, MapPin, Briefcase, ShieldCheck, Calendar, Award, FolderLock, 
-  Edit2, Save, X, Building2, CheckCircle2, Star, Camera, Plus, Trash2, Download, Eye, FileText, Loader2
+  Edit2, Save, X, Building2, CheckCircle2, Star, Camera, Plus, Trash2, Download, Eye, FileText, Loader2, DollarSign, Wallet
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
@@ -469,6 +469,18 @@ const EmployeeProfile = () => {
                                 { label: 'Current Role', value: profile.role, icon: Briefcase, readonly: true },
                                 { label: 'Manager', value: profile.manager?.fullName || 'None', icon: User, readonly: true },
                                 { label: 'Joining Date', value: profile.joiningDate ? formatDate(profile.joiningDate) : 'Not Specified', icon: Calendar, readonly: true },
+                                { 
+                                  label: 'Allocated Monthly Base Salary', 
+                                  value: (profile.baseSalary || profile.monthlyCTC) ? `$${Number(profile.baseSalary || profile.monthlyCTC).toLocaleString()} / month` : 'Not Allocated', 
+                                  icon: DollarSign, 
+                                  readonly: true 
+                                },
+                                { 
+                                  label: 'Annual CTC (Gross)', 
+                                  value: (profile.annualCTC || profile.monthlyCTC || profile.baseSalary) ? `$${Number(profile.annualCTC || (Number(profile.monthlyCTC || profile.baseSalary) * 12)).toLocaleString()} / year` : 'Not Allocated', 
+                                  icon: Wallet, 
+                                  readonly: true 
+                                },
                              ].map((field, i) => (
                                 <div key={i} className="flex items-center gap-5 p-6 bg-slate-50 rounded-2xl border border-slate-100">
                                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-slate-400">

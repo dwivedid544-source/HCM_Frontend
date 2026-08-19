@@ -50,9 +50,7 @@ export const PayrollProvider = ({ children }) => {
     try {
       const res = await superAdminAPI.updatePayslip(id, updates);
       if (res.data?.success) {
-        setPayrollHistory((prev) =>
-          prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
-        );
+        await fetchPayrollData();
         return true;
       }
       return false;
@@ -66,7 +64,7 @@ export const PayrollProvider = ({ children }) => {
     try {
       const res = await superAdminAPI.deletePayslip(id);
       if (res.data?.success) {
-        setPayrollHistory((prev) => prev.filter((item) => item.id !== id));
+        await fetchPayrollData();
         return true;
       }
       return false;
@@ -80,9 +78,7 @@ export const PayrollProvider = ({ children }) => {
     try {
       const res = await superAdminAPI.bulkApprovePayslips(ids);
       if (res.data?.success) {
-        setPayrollHistory((prev) =>
-          prev.map((item) => (ids.includes(item.id) ? { ...item, status: 'Approved' } : item))
-        );
+        await fetchPayrollData();
         return true;
       }
       return false;

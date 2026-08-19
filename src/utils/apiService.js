@@ -225,6 +225,8 @@ export const hrAPI = {
   approveIncrement: (id) => API.patch(`/hr/payroll/increments/${id}/approve`),
   rejectIncrement: (id) => API.patch(`/hr/payroll/increments/${id}/reject`),
   getPayrollSnapshots: (params) => API.get('/hr/payroll/snapshots', { params }),
+  runPayroll: (data) => API.post('/hr/payroll/run', data),
+  runPayrollBatch: (data) => API.post('/hr/payroll/run-batch', data),
 
   promoteCandidate: (id, data) => API.post(`/hr/onboarding/${id}/promote`, data),
   initiateTermination: (data) => API.post('/hr/terminate', data),
@@ -262,6 +264,7 @@ export const adminAPI = {
   createUser: (data) => API.post('/admin/users', data),
   updateUser: (id, data) => API.put(`/admin/users/${id}`, data),
   changeUserRole: (id, data) => API.patch(`/admin/users/${id}/role`, data),
+  revokeUserRole: (id) => API.post(`/admin/users/${id}/revoke-role`),
   toggleUserActive: (id) => API.patch(`/admin/users/${id}/toggle-active`),
   deleteUser: (id) => API.delete(`/admin/users/${id}`),
 
@@ -280,6 +283,7 @@ export const adminAPI = {
   sendPolicyReminder: (id) => API.post(`/admin/policies/${id}/remind`),
 
   getRoles: () => API.get('/admin/roles'),
+  getRoleHistory: () => API.get('/admin/roles/history'),
   createRole: (data) => API.post('/admin/roles', data),
   updateRole: (id, data) => API.put(`/admin/roles/${id}`, data),
   deleteRole: (id) => API.delete(`/admin/roles/${id}`),
@@ -373,6 +377,7 @@ export const superAdminAPI = {
   updateUser: (id, data) => API.put(`/superadmin/users/${id}`, data),
   deleteUser: (id) => API.delete(`/superadmin/users/${id}`),
   changeAnyUserRole: (id, data) => API.patch(`/superadmin/users/${id}/role`, data),
+  revokeAnyUserRole: (id) => API.post(`/superadmin/users/${id}/revoke-role`),
   toggleAnyUserActive: (id) => API.patch(`/superadmin/users/${id}/toggle-active`),
   sendPasswordReset: (id) => API.post(`/superadmin/users/${id}/reset-password`),
 

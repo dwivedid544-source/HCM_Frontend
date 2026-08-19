@@ -1,9 +1,36 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../utils/apiService';
 import CenterModal from '../../shared/components/layout/CenterModal';
 
 const PayrollConfig = () => {
-  const [activeTab, setActiveTab] = useState('structures');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const validTabs = ['structures', 'components', 'deductions', 'taxes'];
+
+  const getInitialTab = () => {
+    const urlTab = searchParams.get('tab') || searchParams.get('section');
+    if (urlTab && validTabs.includes(urlTab)) return urlTab;
+    const saved = localStorage.getItem('hcm_payroll_config_tab');
+    if (saved && validTabs.includes(saved)) return saved;
+    return 'structures';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
+
+  const handleTabChange = (tabKey) => {
+    setActiveTab(tabKey);
+    localStorage.setItem('hcm_payroll_config_tab', tabKey);
+    setSearchParams({ tab: tabKey });
+  };
+
+  useEffect(() => {
+    const urlTab = searchParams.get('tab') || searchParams.get('section');
+    if (urlTab && validTabs.includes(urlTab) && urlTab !== activeTab) {
+      setActiveTab(urlTab);
+      localStorage.setItem('hcm_payroll_config_tab', urlTab);
+    }
+  }, [searchParams]);
+
   const [structures, setStructures] = useState([]);
   const [components, setComponents] = useState([]);
   const [deductions, setDeductions] = useState([]);
@@ -33,7 +60,7 @@ const PayrollConfig = () => {
   });
 
   const [taxForm, setTaxForm] = useState({
-    name: '', country: '', state: '', slabs: '[]'
+    name: '', country: '', state: '', description: ''
   });
 
   const fetchConfig = async () => {
@@ -121,14 +148,19 @@ const PayrollConfig = () => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      JSON.parse(taxForm.slabs);
-      await api.post('/admin/payroll-config/taxes', taxForm);
-      alert('Tax regime added successfully!');
+      const payload = {
+        name: taxForm.name,
+        country: taxForm.country,
+        state: taxForm.state,
+        slabs: taxForm.description || ''
+      };
+      await api.post('/admin/payroll-config/taxes', payload);
+      alert('Tax rule added successfully!');
       setShowTaxModal(false);
-      setTaxForm({ name: '', country: '', state: '', slabs: '[]' });
+      setTaxForm({ name: '', country: '', state: '', description: '' });
       fetchConfig();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error adding tax regime (invalid JSON?)');
+      alert(err.response?.data?.message || 'Error adding tax rule');
     } finally {
       setIsSaving(false);
     }
@@ -198,25 +230,25 @@ const PayrollConfig = () => {
       <div className="flex border-b mb-6 border-gray-200 dark:border-gray-700">
         <button
           className={`py-3 px-6 font-semibold transition-colors duration-200 ${activeTab === 'structures' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-          onClick={() => setActiveTab('structures')}
+          onClick={() => handleTabChange('structures')}
         >
           Salary Structures
         </button>
         <button
           className={`py-3 px-6 font-semibold transition-colors duration-200 ${activeTab === 'components' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-          onClick={() => setActiveTab('components')}
+          onClick={() => handleTabChange('components')}
         >
           Salary Components
         </button>
         <button
           className={`py-3 px-6 font-semibold transition-colors duration-200 ${activeTab === 'deductions' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-          onClick={() => setActiveTab('deductions')}
+          onClick={() => handleTabChange('deductions')}
         >
           Deductions & Benefits
         </button>
         <button
           className={`py-3 px-6 font-semibold transition-colors duration-200 ${activeTab === 'taxes' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-          onClick={() => setActiveTab('taxes')}
+          onClick={() => handleTabChange('taxes')}
         >
           Tax Rules Engine
         </button>
@@ -413,6 +445,7 @@ const PayrollConfig = () => {
                   <thead className="bg-gray-50 dark:bg-gray-700/50">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 font-bold dark:text-gray-300">Name & Country</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 font-bold dark:text-gray-300">Description of Tax Rule</th>
                       <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-300">Action</th>
                     </tr>
                   </thead>
@@ -421,15 +454,19 @@ const PayrollConfig = () => {
                       <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                           {t.name}
-                          <span className="ml-2 text-xs text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">{t.country}</span>
+                          <span className="ml-2 text-xs text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded">{t.country || 'Universal'}</span>
+                          {t.state && <span className="ml-1 text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">{t.state}</span>}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+                          {t.slabs && t.slabs !== '[]' ? t.slabs : 'No description specified'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
-                          <button onClick={() => handleDeleteTax(t.id)} className="text-red-600 hover:text-red-900">Delete</button>
+                          <button onClick={() => handleDeleteTax(t.id)} className="text-red-600 hover:text-red-900 font-semibold">Delete</button>
                         </td>
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan="2" className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                        <td colSpan="3" className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                           No tax regimes configured yet. Click 'Add Tax Rule' to start.
                         </td>
                       </tr>
@@ -626,21 +663,47 @@ const PayrollConfig = () => {
           <form onSubmit={handleAddTax} className="px-6 pb-6 md:px-8 md:pb-8 pt-2 space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 font-bold">Regime Name</label>
-              <input type="text" required value={taxForm.name} onChange={(e) => setTaxForm({ ...taxForm, name: e.target.value })} className="mt-1.5 block w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-all p-2.5 text-sm" />
+              <input 
+                type="text" 
+                required 
+                placeholder="e.g. Standard Income Tax Regime"
+                value={taxForm.name} 
+                onChange={(e) => setTaxForm({ ...taxForm, name: e.target.value })} 
+                className="mt-1.5 block w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-all p-2.5 text-sm" 
+              />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Country</label>
-                <input type="text" required value={taxForm.country} onChange={(e) => setTaxForm({ ...taxForm, country: e.target.value })} className="mt-1.5 block w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-all p-2.5 text-sm" />
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="e.g. United States, India"
+                  value={taxForm.country} 
+                  onChange={(e) => setTaxForm({ ...taxForm, country: e.target.value })} 
+                  className="mt-1.5 block w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-all p-2.5 text-sm" 
+                />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">State / Region (Optional)</label>
-                <input type="text" value={taxForm.state} onChange={(e) => setTaxForm({ ...taxForm, state: e.target.value })} className="mt-1.5 block w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-all p-2.5 text-sm" />
+                <input 
+                  type="text" 
+                  placeholder="e.g. California, Federal"
+                  value={taxForm.state} 
+                  onChange={(e) => setTaxForm({ ...taxForm, state: e.target.value })} 
+                  className="mt-1.5 block w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-all p-2.5 text-sm" 
+                />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Slabs (JSON Array)</label>
-              <textarea required rows={4} value={taxForm.slabs} onChange={(e) => setTaxForm({ ...taxForm, slabs: e.target.value })} placeholder='e.g. [{"min": 0, "max": 10000, "rate": 10}, {"min": 10000, "max": null, "rate": 20}]' className="mt-1.5 block w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm font-mono focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-all p-2.5 text-sm" />
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Description of Tax Rule</label>
+              <textarea 
+                rows={4} 
+                value={taxForm.description} 
+                onChange={(e) => setTaxForm({ ...taxForm, description: e.target.value })} 
+                placeholder="Enter description of the tax rule, applicable brackets, exemption criteria, or compliance notes..." 
+                className="mt-1.5 block w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 transition-all p-2.5 text-sm" 
+              />
             </div>
             <div className="pt-4 flex justify-end">
               <button type="submit" disabled={isSaving} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white px-6 py-2.5 rounded-xl font-medium shadow-md transition-all disabled:opacity-50">

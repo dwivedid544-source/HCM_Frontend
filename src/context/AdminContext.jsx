@@ -66,6 +66,7 @@ export const AdminProvider = ({ children, user }) => {
   const [payrollList, setPayrollList] = useState([]);
   const [systemLogs, setSystemLogs] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [roleHistory, setRoleHistory] = useState([]);
   const [holidays, setHolidays] = useState([]);
   const [calendars, setCalendars] = useState([]);
   const [shifts, setShifts] = useState([]);
@@ -107,29 +108,33 @@ export const AdminProvider = ({ children, user }) => {
         'EMPLOYEE': 'Employee',
         'CANDIDATE': 'Candidate'
       };
-      const mapped = (res.data.data || []).map(u => ({
-        ...u,
-        name: u.employeeProfile?.fullName || u.email.split('@')[0] || 'System User',
-        role: roleMap[u.role] || u.role,
-        department: u.employeeProfile?.department?.name || 'None',
-        status: (u.employeeProfile?.lifecycleStatus === 'RESIGNED' || u.employeeProfile?.lifecycleStatus === 'TERMINATED') 
-                ? (u.employeeProfile.lifecycleStatus === 'RESIGNED' ? 'Resigned' : 'Terminated')
-                : (u.status || (u.isActive ? 'Active' : 'Inactive')),
-        empId: u.employeeProfile?.employeeId || 'EMP-' + u.id.slice(0, 3).toUpperCase(),
-        profileId: u.employeeProfile?.id,
-        phone: u.employeeProfile?.phone || '',
-        joinDate: u.employeeProfile?.joiningDate?.split('T')[0] || u.createdAt?.split('T')[0] || '',
-        empType: u.employeeProfile?.employmentType || '',
-        manager: u.employeeProfile?.manager?.fullName || 'None',
-        address: u.employeeProfile?.address || '',
-        img: u.employeeProfile?.avatarUrl || '',
-        baseSalary: u.employeeProfile?.compensationProfile?.baseSalary || 0,
-        monthlyCTC: u.employeeProfile?.compensationProfile?.monthlyCTC || 0,
-        salaryType: u.employeeProfile?.salaryType || 'Monthly',
-        hourlyRate: u.employeeProfile?.hourlyRate || '',
-        shiftId: u.employeeProfile?.shiftId || '',
-        overtimePolicyId: u.employeeProfile?.overtimePolicyId || ''
-      }));
+      const mapped = (res.data.data || []).map(u => {
+        const isCandidate = u.role === 'CANDIDATE' || u.role === 'Candidate';
+        const fullName = u.employeeProfile?.fullName || u.candidateProfile?.fullName || u.email.split('@')[0] || 'System User';
+        return {
+          ...u,
+          name: fullName,
+          role: roleMap[u.role] || u.role,
+          department: u.employeeProfile?.department?.name || (isCandidate ? 'Talent Acquisition' : 'None'),
+          status: (u.employeeProfile?.lifecycleStatus === 'RESIGNED' || u.employeeProfile?.lifecycleStatus === 'TERMINATED') 
+                  ? (u.employeeProfile.lifecycleStatus === 'RESIGNED' ? 'Resigned' : 'Terminated')
+                  : (u.status || (u.isActive ? 'Active' : 'Inactive')),
+          empId: u.employeeProfile?.employeeId || (isCandidate ? 'CAND-' + u.id.slice(0, 3).toUpperCase() : 'EMP-' + u.id.slice(0, 3).toUpperCase()),
+          profileId: u.employeeProfile?.id || u.candidateProfile?.id,
+          phone: u.employeeProfile?.phone || u.candidateProfile?.phone || '',
+          joinDate: u.employeeProfile?.joiningDate?.split('T')[0] || u.createdAt?.split('T')[0] || '',
+          empType: u.employeeProfile?.employmentType || (isCandidate ? 'Candidate' : 'Full-time'),
+          manager: u.employeeProfile?.manager?.fullName || 'None',
+          address: u.employeeProfile?.address || u.candidateProfile?.address || '',
+          img: u.employeeProfile?.avatarUrl || u.candidateProfile?.avatarUrl || '',
+          baseSalary: u.employeeProfile?.compensationProfile?.baseSalary || 0,
+          monthlyCTC: u.employeeProfile?.compensationProfile?.monthlyCTC || 0,
+          salaryType: u.employeeProfile?.salaryType || 'Monthly',
+          hourlyRate: u.employeeProfile?.hourlyRate || '',
+          shiftId: u.employeeProfile?.shiftId || '',
+          overtimePolicyId: u.employeeProfile?.overtimePolicyId || ''
+        };
+      });
       setUsers(mapped);
     } catch (err) {
       console.error(err);
@@ -191,9 +196,9 @@ export const AdminProvider = ({ children, user }) => {
       const res = await hrAPI.getPayrollSnapshots(monthName ? { month: monthName } : undefined);
       const payslipsArray = res.data?.data || res.data || [];
       const mapped = payslipsArray.map(p => {
-        const basicItem = (p.items || []).find(i => i.code?.toLowerCase() === 'basic' || i.name?.toLowerCase().includes('basic'));
+        const basicItem = (p.items || []).find(i => i.code?.toLowerCase() === 'basic' || i.code?.toLowerCase() === 'base' || i.name?.toLowerCase().includes('basic'));
         const bonusItem = (p.items || []).find(i => i.code?.toLowerCase() === 'bonus' || i.name?.toLowerCase().includes('bonus'));
-        const taxItem = (p.items || []).find(i => i.code?.toLowerCase().startsWith('tax_'));
+        const taxItem = (p.items || []).find(i => i.code?.toLowerCase().startsWith('tax') || i.name?.toLowerCase().includes('tax'));
         
         return {
           ...p,
@@ -213,7 +218,6 @@ export const AdminProvider = ({ children, user }) => {
     } catch (err) {
       console.error("Failed to fetch payroll snapshots", err);
       setPayrollList([]);
-      showToast('Failed to load payroll data', 'error');
     }
   }, []);
 
@@ -262,6 +266,18 @@ export const AdminProvider = ({ children, user }) => {
     } catch (err) {
       console.error(err);
       setRoles([]);
+    }
+  }, []);
+
+  const fetchRoleHistory = useCallback(async () => {
+    const token = localStorage.getItem('hcm_token');
+    if (!token) return;
+    try {
+      const res = await adminAPI.getRoleHistory();
+      setRoleHistory(res.data?.data || []);
+    } catch (err) {
+      console.error('Failed to fetch role history:', err);
+      setRoleHistory([]);
     }
   }, []);
 
@@ -368,29 +384,72 @@ export const AdminProvider = ({ children, user }) => {
     }
   }, []);
 
-  // Fetch all resources when user logs in (restricted to ADMIN or SUPERADMIN or HR roles)
+  const refreshAll = useCallback(async () => {
+    if (!user || !(user.role === 'ADMIN' || user.role === 'SUPERADMIN' || user.role === 'HR')) return;
+    try {
+      await Promise.all([
+        fetchUsers(),
+        fetchDepartments(),
+        fetchPayroll(),
+        fetchAuditLogs(),
+        fetchPolicies(),
+        fetchRoles(),
+        fetchRoleHistory(),
+        fetchHolidays(),
+        fetchCalendars(),
+        fetchShifts(),
+        fetchOvertimePolicies(),
+        fetchBenefits(),
+        fetchAiModules(),
+        fetchAiLogs(),
+        fetchIntegrations(),
+        fetchBillingPlan(),
+        fetchInvoices(),
+        fetchPayrollConfig(),
+        fetchIncrementRequests()
+      ]);
+    } catch (e) {
+      console.error('Error during auto-refresh:', e);
+    }
+  }, [user, fetchUsers, fetchDepartments, fetchPayroll, fetchAuditLogs, fetchPolicies, fetchRoles, fetchRoleHistory, fetchHolidays, fetchCalendars, fetchShifts, fetchOvertimePolicies, fetchBenefits, fetchAiModules, fetchAiLogs, fetchIntegrations, fetchBillingPlan, fetchInvoices, fetchPayrollConfig, fetchIncrementRequests]);
+
+  // Fetch all resources when user logs in and set up background sync
   useEffect(() => {
     if (user && (user.role === 'ADMIN' || user.role === 'SUPERADMIN' || user.role === 'HR')) {
-      fetchUsers();
-      fetchDepartments();
-      fetchPayroll();
-      fetchAuditLogs();
-      fetchPolicies();
-      fetchRoles();
-      fetchHolidays();
-      fetchCalendars();
-      fetchShifts();
-      fetchOvertimePolicies();
-      fetchBenefits();
-      fetchAiModules();
-      fetchAiLogs();
-      fetchIntegrations();
-      fetchBillingPlan();
-      fetchInvoices();
-      fetchPayrollConfig();
-      fetchIncrementRequests();
+      refreshAll();
+
+      const handleFocus = () => {
+        if (document.visibilityState === 'visible') {
+          refreshAll();
+        }
+      };
+
+      const handleDataUpdate = () => {
+        refreshAll();
+      };
+
+      window.addEventListener('focus', handleFocus);
+      window.addEventListener('visibilitychange', handleFocus);
+      window.addEventListener('permissions_updated', handleDataUpdate);
+      window.addEventListener('department_updated', handleDataUpdate);
+      window.addEventListener('user_updated', handleDataUpdate);
+
+      const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          refreshAll();
+        }
+      }, 15000);
+
+      return () => {
+        window.removeEventListener('focus', handleFocus);
+        window.removeEventListener('visibilitychange', handleFocus);
+        window.removeEventListener('permissions_updated', handleDataUpdate);
+        window.removeEventListener('department_updated', handleDataUpdate);
+        window.removeEventListener('user_updated', handleDataUpdate);
+        clearInterval(interval);
+      };
     }
-  }, [user, fetchUsers, fetchDepartments, fetchPayroll, fetchAuditLogs, fetchPolicies, fetchRoles, fetchHolidays, fetchCalendars, fetchBenefits, fetchAiModules, fetchAiLogs, fetchIntegrations, fetchBillingPlan, fetchInvoices, fetchPayrollConfig, fetchIncrementRequests]);
+  }, [user, refreshAll]);
 
 
   // User Actions
@@ -459,7 +518,15 @@ export const AdminProvider = ({ children, user }) => {
     try {
       const user = users.find(u => u.id === id);
       await adminAPI.deleteUser(id);
-      await fetchUsers();
+      await Promise.all([
+        fetchUsers(),
+        fetchDepartments(),
+        fetchRoleHistory(),
+        fetchAuditLogs()
+      ]);
+      window.dispatchEvent(new CustomEvent('user_updated'));
+      window.dispatchEvent(new CustomEvent('department_updated'));
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
       showToast(`User ${user?.employeeProfile?.fullName || user?.name || ''} removed`);
     } catch (err) {
       const user = users.find(u => u.id === id);
@@ -477,7 +544,8 @@ export const AdminProvider = ({ children, user }) => {
       for (const id of ids) {
         await adminAPI.toggleUserActive(id);
       }
-      await fetchUsers();
+      await Promise.all([fetchUsers(), fetchDepartments()]);
+      window.dispatchEvent(new CustomEvent('user_updated'));
       showToast(`Updated status of ${ids.length} users`);
     } catch (err) {
       setUsers(prev => {
@@ -494,7 +562,9 @@ export const AdminProvider = ({ children, user }) => {
       for (const id of ids) {
         await adminAPI.deleteUser(id);
       }
-      await fetchUsers();
+      await Promise.all([fetchUsers(), fetchDepartments(), fetchRoleHistory()]);
+      window.dispatchEvent(new CustomEvent('user_updated'));
+      window.dispatchEvent(new CustomEvent('department_updated'));
       showToast(`Deleted ${ids.length} users`);
     } catch (err) {
       setUsers(prev => {
@@ -522,7 +592,8 @@ export const AdminProvider = ({ children, user }) => {
         color: dept.color || '#4f46e5',
         status: dept.status || 'Active',
       });
-      await fetchDepartments();
+      await Promise.all([fetchDepartments(), fetchOrgChart()]);
+      window.dispatchEvent(new CustomEvent('department_updated'));
       showToast(`Department ${dept.name} created`);
     } catch (err) {
       const message = err.response?.data?.error?.message || 'Failed to create department';
@@ -542,7 +613,8 @@ export const AdminProvider = ({ children, user }) => {
         color: updatedData.color || '#4f46e5',
         status: updatedData.status || 'Active',
       });
-      await fetchDepartments();
+      await Promise.all([fetchDepartments(), fetchOrgChart()]);
+      window.dispatchEvent(new CustomEvent('department_updated'));
       showToast(`Department ${updatedData.name || ''} updated`);
     } catch (err) {
       const message = err.response?.data?.error?.message || 'Failed to update department';
@@ -560,7 +632,8 @@ export const AdminProvider = ({ children, user }) => {
     }
     try {
       await adminAPI.deleteDepartment(id);
-      await fetchDepartments();
+      await Promise.all([fetchDepartments(), fetchOrgChart()]);
+      window.dispatchEvent(new CustomEvent('department_updated'));
       showToast(`Department removed`);
       return true;
     } catch (err) {
@@ -578,23 +651,57 @@ export const AdminProvider = ({ children, user }) => {
   const addRole = async (role) => {
     try {
       const res = await adminAPI.createRole(role);
-      setRoles(prev => [...prev, res.data.data]);
+      await Promise.all([fetchRoles(), fetchRoleHistory()]);
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
       showToast(`Custom role ${role.name} created`);
+      return res.data?.data;
     } catch (err) {
-      const newRole = { ...role, id: Date.now().toString(), isCustom: true };
-      setRoles(prev => [...prev, newRole]);
-      showToast(`Custom role ${role.name} created (demo mode)`);
+      const msg = err.response?.data?.error?.message || 'Failed to create role';
+      showToast(msg, 'error');
+      throw err;
     }
   };
 
   const updateRole = async (id, updatedData) => {
     try {
       const res = await adminAPI.updateRole(id, updatedData);
-      setRoles(prev => prev.map(r => r.id === id ? res.data.data : r));
-      showToast(`Role permissions updated`);
+      await Promise.all([fetchRoles(), fetchUsers(), fetchRoleHistory()]);
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
+      showToast(`Role permissions updated and synced`);
+      return res.data?.data;
     } catch (err) {
-      setRoles(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
-      showToast(`Role permissions updated (demo mode)`);
+      const msg = err.response?.data?.error?.message || 'Failed to update role permissions';
+      showToast(msg, 'error');
+      throw err;
+    }
+  };
+
+  const changeUserRole = async (id, roleData) => {
+    try {
+      const payload = typeof roleData === 'string' ? { role: roleData } : roleData;
+      const res = await adminAPI.changeUserRole(id, payload);
+      await Promise.all([fetchUsers(), fetchDepartments(), fetchRoles(), fetchRoleHistory()]);
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
+      showToast('User role updated successfully');
+      return res.data?.data;
+    } catch (err) {
+      const msg = err.response?.data?.error?.message || 'Failed to update user role';
+      showToast(msg, 'error');
+      throw err;
+    }
+  };
+
+  const revokeUserRole = async (id) => {
+    try {
+      const res = await adminAPI.revokeUserRole(id);
+      await Promise.all([fetchUsers(), fetchDepartments(), fetchRoles(), fetchRoleHistory()]);
+      window.dispatchEvent(new CustomEvent('permissions_updated'));
+      showToast(res.data?.message || 'Role revoked successfully');
+      return res.data?.data;
+    } catch (err) {
+      const msg = err.response?.data?.error?.message || 'Failed to revoke role';
+      showToast(msg, 'error');
+      throw err;
     }
   };
 
@@ -675,64 +782,90 @@ export const AdminProvider = ({ children, user }) => {
   const addHoliday = async (holiday) => {
     try {
       const res = await adminAPI.createHoliday(holiday);
-      setHolidays(prev => [...prev, res.data.data]);
-      showToast(`Holiday ${holiday.name} added`);
+      await fetchHolidays();
+      showToast(`Holiday ${holiday.name} added successfully`);
     } catch (err) {
-      setHolidays(prev => [...prev, { ...holiday, id: Date.now().toString() }]);
-      showToast(`Holiday ${holiday.name} added (demo mode)`);
+      console.error('Failed to create holiday:', err);
+      showToast(err.response?.data?.message || 'Failed to add holiday', 'error');
     }
   };
 
   const updateHoliday = async (id, updatedData) => {
     try {
-      const res = await adminAPI.updateHoliday(id, updatedData);
-      setHolidays(prev => prev.map(h => h.id === id ? res.data.data : h));
-      showToast(`Holiday updated`);
+      await adminAPI.updateHoliday(id, updatedData);
+      await fetchHolidays();
+      showToast(`Holiday updated successfully`);
     } catch (err) {
-      setHolidays(prev => prev.map(h => h.id === id ? { ...h, ...updatedData } : h));
-      showToast(`Holiday updated (demo mode)`);
+      console.error('Failed to update holiday:', err);
+      showToast(err.response?.data?.message || 'Failed to update holiday', 'error');
     }
   };
 
   const deleteHoliday = async (id) => {
     try {
       await adminAPI.deleteHoliday(id);
-      setHolidays(prev => prev.filter(h => h.id !== id));
+      await fetchHolidays();
       showToast('Holiday deleted successfully');
-    } catch (e) { console.error(e); showToast('Error deleting holiday', 'error'); }
+    } catch (e) {
+      console.error('Error deleting holiday:', e);
+      showToast('Error deleting holiday', 'error');
+    }
   };
 
   // Calendar Actions
   const createCalendar = async (calendar) => {
     try {
-      const res = await adminAPI.createCalendar(calendar);
-      setCalendars(prev => [...prev, res.data.data]);
-      showToast(`Calendar created`);
-    } catch (e) { console.error(e); showToast('Error creating calendar', 'error'); }
+      await adminAPI.createCalendar(calendar);
+      await fetchCalendars();
+      showToast(`Calendar created successfully`);
+    } catch (e) {
+      console.error('Error creating calendar:', e);
+      showToast('Error creating calendar', 'error');
+    }
   };
 
   const updateCalendar = async (id, updatedData) => {
     try {
-      const res = await adminAPI.updateCalendar(id, updatedData);
-      setCalendars(prev => prev.map(c => c.id === id ? res.data.data : c));
-      showToast(`Calendar updated`);
-    } catch (e) { console.error(e); showToast('Error updating calendar', 'error'); }
+      await adminAPI.updateCalendar(id, updatedData);
+      await fetchCalendars();
+      showToast(`Calendar updated successfully`);
+    } catch (e) {
+      console.error('Error updating calendar:', e);
+      showToast('Error updating calendar', 'error');
+    }
   };
 
   const deleteCalendar = async (id) => {
     try {
       await adminAPI.deleteCalendar(id);
-      setCalendars(prev => prev.filter(c => c.id !== id));
+      await fetchCalendars();
       showToast('Calendar deleted successfully');
-    } catch (e) { console.error(e); showToast('Error deleting calendar', 'error'); }
+    } catch (e) {
+      console.error('Error deleting calendar:', e);
+      showToast('Error deleting calendar', 'error');
+    }
   };
 
   const assignCalendar = async (assignmentData) => {
     try {
       await adminAPI.assignCalendar(assignmentData);
+      await fetchCalendars();
       showToast('Calendar assigned successfully');
-      await fetchCalendars(); // refresh
-    } catch (e) { console.error(e); showToast('Error assigning calendar', 'error'); }
+    } catch (e) {
+      console.error('Error assigning calendar:', e);
+      showToast('Error assigning calendar', 'error');
+    }
+  };
+
+  const removeAssignment = async (id) => {
+    try {
+      await adminAPI.removeAssignment(id);
+      await fetchCalendars();
+      showToast('Assignment removed successfully');
+    } catch (e) {
+      console.error('Error removing assignment:', e);
+      showToast('Error removing assignment', 'error');
+    }
   };
 
   const createShift = async (data) => {
@@ -787,33 +920,33 @@ export const AdminProvider = ({ children, user }) => {
   const addBenefit = async (benefit) => {
     try {
       const res = await adminAPI.createBenefit(benefit);
-      setBenefits(prev => [...prev, res.data.data]);
-      showToast(`Benefit plan ${benefit.name} added`);
+      await fetchBenefits();
+      showToast(`Benefit plan ${benefit.name} added successfully`);
     } catch (err) {
-      setBenefits(prev => [...prev, { ...benefit, id: Date.now().toString() }]);
-      showToast(`Benefit plan ${benefit.name} added (demo mode)`);
+      console.error('Failed to add benefit plan:', err);
+      showToast(err.response?.data?.message || 'Failed to add benefit plan', 'error');
     }
   };
 
   const updateBenefit = async (id, updatedData) => {
     try {
-      const res = await adminAPI.updateBenefit(id, updatedData);
-      setBenefits(prev => prev.map(b => b.id === id ? res.data.data : b));
-      showToast(`Benefit plan updated`);
+      await adminAPI.updateBenefit(id, updatedData);
+      await fetchBenefits();
+      showToast(`Benefit plan updated successfully`);
     } catch (err) {
-      setBenefits(prev => prev.map(b => b.id === id ? { ...b, ...updatedData } : b));
-      showToast(`Benefit plan updated (demo mode)`);
+      console.error('Failed to update benefit plan:', err);
+      showToast(err.response?.data?.message || 'Failed to update benefit plan', 'error');
     }
   };
 
   const deleteBenefit = async (id) => {
     try {
       await adminAPI.deleteBenefit(id);
-      setBenefits(prev => prev.filter(b => b.id !== id));
-      showToast(`Benefit plan deleted`);
+      await fetchBenefits();
+      showToast(`Benefit plan deleted successfully`);
     } catch (err) {
-      setBenefits(prev => prev.filter(b => b.id !== id));
-      showToast(`Benefit plan deleted (demo mode)`);
+      console.error('Failed to delete benefit plan:', err);
+      showToast(err.response?.data?.message || 'Failed to delete benefit plan', 'error');
     }
   };
 
@@ -849,13 +982,14 @@ export const AdminProvider = ({ children, user }) => {
         return isNotAdmin && !isInactiveStatus;
       });
 
-      const employeeIds = eligibleUsers.map(u => u.profileId).filter(Boolean);
+      const employeeIds = eligibleUsers.map(u => u.profileId || u.id).filter(Boolean);
 
       if (employeeIds.length > 0) {
         try {
-          await api.post('/hr/payroll/run-batch', {
+          await hrAPI.runPayrollBatch({
             employeeIds,
-            month: targetMonth
+            month: targetMonth,
+            status: 'Paid'
           });
         } catch (e) {
           console.error(`Failed to generate payroll batch:`, e.response?.data?.message || e.message);
@@ -865,12 +999,8 @@ export const AdminProvider = ({ children, user }) => {
       await fetchPayroll(targetMonth);
       showToast('Payroll processed and generated successfully');
     } catch (err) {
-      setPayrollList(prev => {
-        const updated = prev.map(p => ({ ...p, status: 'Processed' }));
-        localStorage.setItem('hcm_admin_payroll', JSON.stringify(updated));
-        return updated;
-      });
-      showToast('Payroll processed successfully (demo)');
+      console.error("Run payroll error:", err);
+      showToast('Failed to process payroll batch', 'error');
     }
   };
 
@@ -880,33 +1010,27 @@ export const AdminProvider = ({ children, user }) => {
 
     let targetUser = users.find(u => u.id === id);
     const profileId = targetUser?.profileId || id;
-    const exists = payrollList.find(p => p.id === id || p.userId === id || p.employeeId === id || p.employeeId === profileId);
+    const targetMonth = monthName || new Date().toLocaleString('default', { month: 'long' });
 
-    // If only status is changing to 'Processed', mark the payslip as paid
-    if (data.status === 'Processed' && exists) {
+    // If status is changing to 'Processed' or 'Paid', process individual employee directly
+    if (data.status === 'Processed' || data.status === 'Paid') {
       try {
-        if (exists.id && exists.id !== id) {
-          await adminAPI.markPayslipPaid(exists.id);
-        }
-        await fetchPayroll(monthName);
-        showToast('Payslip processed successfully');
+        await hrAPI.runPayroll({
+          employeeId: profileId,
+          month: targetMonth,
+          status: 'Paid'
+        });
+        await fetchPayroll(targetMonth);
+        showToast(`Payroll processed successfully for ${targetUser?.name || 'Employee'}`);
         return;
       } catch (err) {
-        console.error('Failed to process payslip on backend:', err);
-        // Fallback for demo mode
-        setPayrollList(prev => {
-          const updated = prev.map(p => 
-            (p.id === exists.id || p.id === id || p.userId === id || p.employeeId === id) 
-              ? { ...p, status: 'Processed' } 
-              : p
-          );
-          localStorage.setItem('hcm_admin_payroll', JSON.stringify(updated));
-          return updated;
-        });
-        showToast('Payslip processed (demo mode)');
+        console.error('Failed to process individual payroll:', err);
+        showToast(err.response?.data?.message || 'Failed to process payroll', 'error');
         return;
       }
     }
+
+    const exists = payrollList.find(p => p.id === id || p.userId === id || p.employeeId === id || p.employeeId === profileId);
 
     if (!targetUser) {
       targetUser = users.find(u => u.id === id || u.profileId === profileId);
@@ -1244,12 +1368,31 @@ export const AdminProvider = ({ children, user }) => {
 
   // --- REPORTS STATE ---
   const [reportSchedules, setReportSchedules] = usePersistedState('reportSchedules', []);
+  const [customReports, setCustomReports] = usePersistedState('customReports', [
+    {
+      id: 'RPT-17250001',
+      title: 'Workforce & Compensation Overview',
+      modules: ['Workforce Analytics', 'Financials'],
+      format: 'Charts & Tables',
+      createdAt: '2026-08-19T10:30:00.000Z',
+      status: 'Generated',
+      size: '142 KB'
+    }
+  ]);
 
   const addReportSchedule = (schedule) => {
     setReportSchedules(prev => [...prev, { ...schedule, id: Date.now() }]);
     showToast(`Report schedule "${schedule.name}" created`);
   };
 
+  const addCustomReport = (report) => {
+    setCustomReports(prev => [report, ...prev]);
+  };
+
+  const deleteCustomReport = (id) => {
+    setCustomReports(prev => prev.filter(r => r.id !== id));
+    showToast('Report removed from history');
+  };
 
   // Computed total active employees (excluding candidates and inactive)
   const totalActiveEmployees = useMemo(() => {
@@ -1257,13 +1400,14 @@ export const AdminProvider = ({ children, user }) => {
   }, [users]);
 
   const value = {
-    users, addUser, updateUser, deleteUser, bulkUpdateUsersStatus, bulkDeleteUsers, fetchUsers,
+    users, addUser, updateUser, deleteUser, bulkUpdateUsersStatus, bulkDeleteUsers, fetchUsers, changeUserRole, revokeUserRole,
     departments, addDepartment, updateDepartment, deleteDepartment,
     orgChartData, fetchOrgChart,
     roles, addRole, updateRole, deleteRole, duplicateRole, archiveRole, restoreRole, exportRole, importRole,
+    roleHistory, fetchRoleHistory,
     toasts, showToast,
     holidays, fetchHolidays, addHoliday, updateHoliday, deleteHoliday,
-    calendars, fetchCalendars, createCalendar, updateCalendar, deleteCalendar, assignCalendar,
+    calendars, fetchCalendars, createCalendar, updateCalendar, deleteCalendar, assignCalendar, removeAssignment,
     shifts, fetchShifts, createShift, updateShift, deleteShift,
     overtimePolicies, fetchOvertimePolicies, createOvertimePolicy, updateOvertimePolicy, deleteOvertimePolicy,
     benefits, addBenefit, updateBenefit, deleteBenefit,
@@ -1278,6 +1422,7 @@ export const AdminProvider = ({ children, user }) => {
     billingPlan, invoices, updatePlan, updateInvoice, exportInvoices,
     systemLogs, addSystemLog,
     reportSchedules, addReportSchedule,
+    customReports, addCustomReport, deleteCustomReport,
     loading
   };
 

@@ -93,7 +93,7 @@ const Departments = () => {
           <p className="text-slate-500 font-medium tracking-tight">Manage your company structure, team categories and leadership</p>
         </div>
         <div className="flex items-center gap-3">
-          <PermissionGate module="departments" action="view">
+          <PermissionGate module="departments" action="create">
           <button 
             onClick={() => setIsImportModalOpen(true)}
             className="btn-secondary px-5 py-2.5 font-bold flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer animate-press mr-2"
@@ -101,6 +101,8 @@ const Departments = () => {
             <Upload size={18} />
             <span className="hidden sm:inline">Import</span>
           </button>
+          </PermissionGate>
+          <PermissionGate module="departments" action="view">
           <button 
             onClick={handleExport}
             className="btn-secondary px-5 py-2.5 font-bold flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer animate-press"

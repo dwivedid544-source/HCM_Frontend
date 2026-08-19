@@ -31,6 +31,7 @@ import Button from '../../shared/components/ui/Button';
 import IconButton from '../../shared/components/ui/IconButton';
 import PageHeader from '../../shared/components/ui/PageHeader';
 import EmptyState from '../../shared/components/ui/EmptyState';
+import PermissionGate from '../../shared/components/common/PermissionGate';
 import api from '../../utils/apiService';
 
 const LeaveApproval = () => {
@@ -280,27 +281,33 @@ const LeaveApproval = () => {
          >
             {activeModule === 'leaves' ? (
                <>
+                  <PermissionGate module="leave_approval" action="create">
                   <Button variant="secondary" leftIcon={Upload} onClick={() => setIsImportModalOpen(true)}>
                      Import Leaves
                   </Button>
+                  </PermissionGate>
                   <Button variant="ai" leftIcon={Sparkles} onClick={handleFetchAIRecommendations}>
                      AI Recommendations
                   </Button>
                   <Button variant="export" leftIcon={Download} isLoading={isExporting} onClick={handleExport}>
                      Export History
                   </Button>
+                  <PermissionGate module="leave_approval" action="create">
                   <Button variant="primary" leftIcon={Plus} onClick={() => setShowAddModal(true)}>
                      Add Request
                   </Button>
+                  </PermissionGate>
                </>
             ) : (
                <>
                   <Button variant="export" leftIcon={Download} isLoading={isExporting} onClick={handleExport}>
                      Export History
                   </Button>
+                  <PermissionGate module="leave_approval" action="create">
                   <Button variant="primary" leftIcon={Plus} onClick={() => setShowIncrementModal(true)}>
                      Request Increment
                   </Button>
+                  </PermissionGate>
                </>
             )}
          </PageHeader>
@@ -439,18 +446,20 @@ const LeaveApproval = () => {
                                           tooltip="Review Request"
                                           onClick={() => setSelectedRequest(req)}
                                        />
-                                       <IconButton
-                                          icon={Check}
-                                          variant="success"
-                                          tooltip="Quick Approve"
-                                          onClick={() => handleStatusUpdate(req.id, 'MANAGER_APPROVED')}
-                                       />
-                                       <IconButton
-                                          icon={X}
-                                          variant="danger"
-                                          tooltip="Quick Reject"
-                                          onClick={() => handleStatusUpdate(req.id, 'REJECTED')}
-                                       />
+                                       <PermissionGate module="leave_approval" action="approve">
+                                          <IconButton
+                                             icon={Check}
+                                             variant="success"
+                                             tooltip="Quick Approve"
+                                             onClick={() => handleStatusUpdate(req.id, 'MANAGER_APPROVED')}
+                                          />
+                                          <IconButton
+                                             icon={X}
+                                             variant="danger"
+                                             tooltip="Quick Reject"
+                                             onClick={() => handleStatusUpdate(req.id, 'REJECTED')}
+                                          />
+                                       </PermissionGate>
                                     </div>
                                  ) : (
                                     <span className={cn(

@@ -22,6 +22,8 @@ import { cn } from '../../utils/cn';
 import BenefitPlanModal from '../../shared/components/admin/BenefitPlanModal';
 import ConfirmDialog from '../../shared/components/admin/ConfirmDialog';
 import ActionDropdown from '../../shared/components/admin/ActionDropdown';
+import PermissionGate from '../../shared/components/common/PermissionGate';
+import { usePermission } from '../../hooks/usePermission';
 import { useCurrency } from '../../hooks/useCurrency';
 
 const BenefitsConfig = () => {
@@ -47,6 +49,8 @@ const BenefitsConfig = () => {
   let dynamicTotalContribution = 0;
 
   benefits.forEach(b => {
+    if (b.status?.toLowerCase() === 'inactive' || b.status?.toLowerCase() === 'archived') return;
+
     const activeForPlan = Array.isArray(b.employeeBenefits) 
       ? b.employeeBenefits.filter(eb => eb.status === 'Active' || eb.status === 'Approved' || eb.status === 'Enrolled').length 
       : 0;
@@ -54,13 +58,15 @@ const BenefitsConfig = () => {
     dynamicActiveEnrollees += activeForPlan;
     
     let val = 0;
-    const str = String(b.contribution).toLowerCase();
+    const str = String(b.contribution || b.employerContribution || '0').toLowerCase();
     const matches = str.match(/[\d.]+/g);
     if (matches && matches.length > 0) {
       val = parseFloat(matches[0]);
       if (str.includes('k')) val *= 1000;
     }
-    dynamicTotalContribution += (val * activeForPlan);
+    
+    // If active enrollees exist, scale contribution by enrollees; otherwise show the configured benefit plan allocation
+    dynamicTotalContribution += (activeForPlan > 0 ? (val * activeForPlan) : val);
   });
   
   const stats = [
@@ -78,6 +84,7 @@ const BenefitsConfig = () => {
           <p className="hcm-page-subtitle">Design, manage and assign multi-tier employee benefit packages</p>
         </div>
         <div className="flex items-center gap-3">
+          <PermissionGate module="benefits_config" action="view">
           <button 
             onClick={() => {
               const csvRows = [
@@ -106,6 +113,8 @@ const BenefitsConfig = () => {
             <Download size={18} />
             <span className="hidden sm:inline">Export Audit</span>
           </button>
+          </PermissionGate>
+          <PermissionGate module="benefits_config" action="create">
           <button 
             onClick={() => {
               setPlanToEdit(null);
@@ -116,6 +125,7 @@ const BenefitsConfig = () => {
              <Plus size={18} />
              <span className="hidden sm:inline">Create Plan</span>
           </button>
+          </PermissionGate>
         </div>
       </div>
 
@@ -223,6 +233,7 @@ const BenefitsConfig = () => {
                            </span>
                         </td>
                         <td className="hcm-td text-right">
+                            <PermissionGate module="benefits_config" action="edit">
                             <div className="flex justify-end items-center gap-1.5">
                               <button
                                 onClick={() => { setPlanToEdit(plan); setIsAddModalOpen(true); }}
@@ -240,6 +251,7 @@ const BenefitsConfig = () => {
                                 direction={filteredBenefits.length > 2 && idx >= filteredBenefits.length - 2 ? 'up' : 'down'}
                               />
                             </div>
+                            </PermissionGate>
                         </td>
                      </tr>
                   )) : (
