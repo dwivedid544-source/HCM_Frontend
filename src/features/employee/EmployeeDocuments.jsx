@@ -11,7 +11,7 @@ import CenterModal from '../../shared/components/layout/CenterModal';
 import PermissionGate from '../../shared/components/common/PermissionGate';
 
 const EmployeeDocuments = () => {
-  const { documents, uploadDoc, deleteDoc, showToast } = useEmployee();
+  const { documents, uploadDoc, deleteDoc, showToast, loading, error, refetchAll } = useEmployee();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
@@ -128,79 +128,93 @@ const EmployeeDocuments = () => {
     }
   };
 
+  const validateSelectedFile = (file) => {
+    if (!file) return false;
+    const allowedExts = ['.pdf', '.png', '.jpg', '.jpeg', '.txt'];
+    const fileName = file.name.toLowerCase();
+    const isAllowed = allowedExts.some(ext => fileName.endsWith(ext));
+    
+    if (!isAllowed) {
+      const msg = `Unsupported file type '${file.name.split('.').pop()}'. Please select a PDF, PNG, JPG, JPEG, or TXT document.`;
+      setAiError(msg);
+      setStage('failure');
+      showToast(msg, 'error');
+      return false;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) {
+      const msg = `File size exceeds the 10MB limit (selected: ${(file.size / (1024 * 1024)).toFixed(1)}MB). Please select a smaller file.`;
+      setAiError(msg);
+      setStage('failure');
+      showToast(msg, 'error');
+      return false;
+    }
+
+    setAiError(null);
+    setAiFile(file);
+    setStage('selected');
+    return true;
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const sizeMb = file.size / (1024 * 1024);
-      if (sizeMb > 10) {
-        showToast('File size exceeds 10MB limit', 'error');
-        return;
-      }
-      setAiFile(file);
+      validateSelectedFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleAiFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const sizeMb = file.size / (1024 * 1024);
-      if (sizeMb > 10) {
-        showToast('File size exceeds 10MB limit', 'error');
-        return;
-      }
-      setAiFile(file);
+    if (e.target.files && e.target.files[0]) {
+      validateSelectedFile(e.target.files[0]);
     }
   };
 
-  // ── Execute AI analysis with simulated steps ──────────────────
   const runAiAnalysis = async () => {
     if (!aiFile) {
-      showToast('Please upload or select a document first', 'error');
+      showToast('Please select a document first', 'error');
       return;
     }
 
     setAiError(null);
     setAiResult(null);
     setStage('uploading');
-    setStageProgress(15);
+    setStageProgress(25);
 
     const formData = new FormData();
     formData.append('file', aiFile);
 
-    const intervals = [];
-    const setStageTimed = (nextStage, progress, delay) => {
-      intervals.push(setTimeout(() => {
-        setStage(nextStage);
-        setStageProgress(progress);
-      }, delay));
-    };
+    const timeouts = [];
+    timeouts.push(setTimeout(() => {
+      setStage('ocr');
+      setStageProgress(60);
+    }, 1000));
 
-    setStageTimed('reading', 35, 800);
-    setStageTimed('ocr', 60, 1600);
-    setStageTimed('extracting', 80, 2600);
-    setStageTimed('analyzing', 92, 3800);
+    timeouts.push(setTimeout(() => {
+      setStage('analyzing');
+      setStageProgress(85);
+    }, 2200));
 
     try {
       const res = await api.aiDocumentAnalyze(formData);
-      intervals.forEach(clearTimeout);
+      timeouts.forEach(clearTimeout);
 
       if (res && res.data && res.data.success) {
-        setStage('done');
+        setStage('success');
         setStageProgress(100);
         setAiResult(res.data.data);
         showToast('Document OCR analysis completed successfully!', 'success');
       } else {
-        throw new Error(res?.data?.error?.message || 'AI document processing failed.');
+        const errMsg = res?.data?.error?.message || res?.data?.error || 'AI document processing failed.';
+        throw new Error(errMsg);
       }
     } catch (err) {
-      intervals.forEach(clearTimeout);
-      setStage('error');
-      const msg = err.response?.data?.error?.message || err.message || 'AI document analysis failed.';
-      setAiError(msg);
-      showToast(msg, 'error');
+      timeouts.forEach(clearTimeout);
+      setStage('failure');
+      const userSafeMsg = err.response?.data?.error?.message || err.response?.data?.error || err.message || 'AI document analysis failed.';
+      setAiError(userSafeMsg);
+      showToast(userSafeMsg, 'error');
     }
   };
 
@@ -249,6 +263,30 @@ const EmployeeDocuments = () => {
     setTimeout(() => setCopied(false), 2000);
     showToast('Extracted JSON data copied to clipboard!');
   };
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-0 min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4 text-left">
+        <AlertCircle className="text-rose-500 w-12 h-12" />
+        <h3 className="text-lg font-bold text-slate-950 dark:text-white">Failed to Load Vault Documents</h3>
+        <p className="text-sm text-slate-500 max-w-md">{error}</p>
+        <button onClick={refetchAll} className="btn-primary px-6 py-2.5 font-bold flex items-center gap-2">
+          <span>Try Again</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (loading || !documents) {
+    return (
+      <div className="space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-0 text-left">
+        <div className="text-center py-16">
+          <div className="w-16 h-16 border-4 border-t-indigo-600 border-indigo-100 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-slate-400 dark:text-slate-500">Loading Documents vault...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto w-full px-2 sm:px-4 md:px-0">
@@ -428,26 +466,26 @@ const EmployeeDocuments = () => {
       <CenterModal 
         isOpen={isAiModalOpen} 
         onClose={() => {
-          if (stage !== 'uploading' && stage !== 'reading' && stage !== 'ocr' && stage !== 'extracting' && stage !== 'analyzing') {
+          if (stage !== 'uploading' && stage !== 'ocr' && stage !== 'analyzing') {
             setIsAiModalOpen(false);
           }
         }} 
-        title="✨ AI Document Analyzer"
+        title="✨ AI Document Analyzer & OCR"
       >
         <div className="p-6 text-left max-h-[85vh] overflow-y-auto scrollbar-thin">
           <AnimatePresence mode="wait">
-            {/* Stage 1: Drag & Drop upload */}
-            {(stage === 'idle' || stage === 'error') && (
+            {/* 1. IDLE / SELECTED / FAILURE STAGES */}
+            {(stage === 'idle' || stage === 'selected' || stage === 'failure') && (
               <motion.div
                 key="upload-panel"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                className="space-y-5"
+                className="space-y-5 text-left"
               >
                 <div>
                   <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Drag & Drop Document</h4>
-                  <p className="text-[10px] text-slate-450 mt-1">Upload files to analyze structures, OCR details, and perform compliance checks</p>
+                  <p className="text-[10px] text-slate-450 mt-1">Upload PDF or image files to extract text (OCR), detect entities, and run compliance checks</p>
                 </div>
 
                 <div
@@ -483,11 +521,12 @@ const EmployeeDocuments = () => {
                   </div>
                 </div>
 
-                {stage === 'error' && aiError && (
-                  <div className="p-3.5 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-2.5 text-[11px] text-rose-700">
-                    <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                {stage === 'failure' && aiError && (
+                  <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-3 text-xs text-rose-700">
+                    <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-600" />
                     <div>
-                      <span className="font-bold">Analysis Failed:</span> {aiError}
+                      <span className="font-bold block text-rose-900 mb-0.5">Validation / Processing Error</span>
+                      <p className="leading-relaxed">{aiError}</p>
                     </div>
                   </div>
                 )}
@@ -513,8 +552,8 @@ const EmployeeDocuments = () => {
               </motion.div>
             )}
 
-            {/* Stage 2: Processing Progress */}
-            {stage !== 'idle' && stage !== 'done' && stage !== 'error' && (
+            {/* 2. UPLOADING / OCR / ANALYZING PROGRESS STAGES */}
+            {(stage === 'uploading' || stage === 'ocr' || stage === 'analyzing') && (
               <motion.div
                 key="progress-panel"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -533,14 +572,12 @@ const EmployeeDocuments = () => {
 
                 <div className="space-y-2">
                   <h4 className="text-sm font-bold text-slate-800 tracking-tight">
-                    {stage === 'uploading' && 'Uploading document...'}
-                    {stage === 'reading' && 'Reading document content...'}
-                    {stage === 'ocr' && 'Running AI OCR / Vision analysis...'}
-                    {stage === 'extracting' && 'Extracting HR-specific metrics...'}
-                    {stage === 'analyzing' && 'Analyzing compliance & risk profiles...'}
+                    {stage === 'uploading' && 'Uploading document to secure server...'}
+                    {stage === 'ocr' && 'Running OCR text extraction & vision recognition...'}
+                    {stage === 'analyzing' && 'Analyzing HR entities, compliance & risk profiles...'}
                   </h4>
                   <p className="text-[10px] text-slate-450 uppercase tracking-widest font-semibold">
-                    Processing Stage: {stageProgress}%
+                    State: {stage.toUpperCase()} ({stageProgress}%)
                   </p>
                 </div>
 
@@ -554,13 +591,13 @@ const EmployeeDocuments = () => {
               </motion.div>
             )}
 
-            {/* Stage 3: Finished Results */}
-            {stage === 'done' && aiResult && (
+            {/* 3. SUCCESS / RESULT STAGE */}
+            {stage === 'success' && aiResult && (
               <motion.div
                 key="result-panel"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
+                className="space-y-6 text-left"
               >
                 {/* Status pill & Type */}
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -584,7 +621,7 @@ const EmployeeDocuments = () => {
                   </div>
                 </div>
 
-                {/* OCR Confidence gauge */}
+                {/* OCR Confidence & Details */}
                 <div className="bg-slate-50/50 border border-slate-150 p-4 rounded-2xl flex items-center justify-between gap-4">
                   <div className="flex-1 space-y-1.5">
                     <div className="flex justify-between items-center text-[10px] font-bold text-slate-450 uppercase tracking-wider">
@@ -602,7 +639,7 @@ const EmployeeDocuments = () => {
                   </div>
                   <div className="text-[10px] text-slate-400 font-bold leading-relaxed border-l border-slate-200 pl-4 w-28 text-left shrink-0">
                     Model: {aiResult.metadata?.model || 'gpt-4o-mini'}<br/>
-                    Time: {aiResult.metadata?.processingTimeMs || 1500}ms
+                    Pages: {aiResult.document?.pages || 1}
                   </div>
                 </div>
 
@@ -614,15 +651,25 @@ const EmployeeDocuments = () => {
                   </p>
                 </div>
 
+                {/* Extracted Text (OCR output) */}
+                {aiResult.ocr?.text && (
+                  <div className="space-y-1.5">
+                    <h5 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Extracted Raw Text (OCR)</h5>
+                    <div className="bg-slate-900 text-slate-200 p-3.5 rounded-2xl text-[11px] font-mono max-h-32 overflow-y-auto whitespace-pre-wrap border border-slate-800 scrollbar-thin">
+                      {aiResult.ocr.text}
+                    </div>
+                  </div>
+                )}
+
                 {/* Key extracted data table */}
                 {aiResult.extractedData && Object.keys(aiResult.extractedData).length > 0 && (
                   <div className="space-y-2">
-                    <h5 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Extracted HR Data Fields</h5>
+                    <h5 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Detected HR Entities & Values</h5>
                     <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-xs">
                       <table className="min-w-full divide-y divide-slate-100 text-[11px]">
                         <thead className="bg-slate-50/60">
                           <tr>
-                            <th className="px-4 py-2 text-left font-bold text-slate-500 uppercase tracking-wider">Data Field</th>
+                            <th className="px-4 py-2 text-left font-bold text-slate-500 uppercase tracking-wider">Entity Field</th>
                             <th className="px-4 py-2 text-left font-bold text-slate-500 uppercase tracking-wider">Extracted Value</th>
                           </tr>
                         </thead>
@@ -663,7 +710,7 @@ const EmployeeDocuments = () => {
                 {/* Warnings Alert */}
                 {aiResult.analysis?.warnings && aiResult.analysis.warnings.length > 0 && (
                   <div className="space-y-2">
-                    <h5 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Alerts & Warnings</h5>
+                    <h5 className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Compliance Alerts & Warnings</h5>
                     <div className="space-y-1.5">
                       {aiResult.analysis.warnings.map((warn, i) => (
                         <div key={i} className="p-3 bg-amber-50/70 border border-amber-100 rounded-2xl flex items-start gap-2.5 text-[11px] text-amber-800">
@@ -702,6 +749,7 @@ const EmployeeDocuments = () => {
                       setStage('idle');
                       setAiFile(null);
                       setAiResult(null);
+                      setAiError(null);
                     }}
                     className="flex-1 min-w-[120px] py-3 bg-slate-150 hover:bg-slate-200 text-slate-750 font-bold rounded-2xl text-xs transition-colors flex justify-center items-center gap-1.5"
                   >

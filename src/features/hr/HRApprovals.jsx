@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAdmin } from '../../context/AdminContext';
+import StatCard from '../../shared/components/ui/StatCard';
 import { useHR } from '../../context/HRContext';
 import { hrAPI, adminAPI } from '../../utils/apiService';
 import CenterModal from '../../shared/components/common/CenterModal';
@@ -241,21 +242,14 @@ const HRApprovals = () => {
          {/* Stats Cards Section */}
          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, idx) => (
-               <motion.div
+               <StatCard
                   key={idx}
-                  whileHover={{ y: -5 }}
-                  className="card"
-               >
-                  <div className="flex items-center gap-4 text-left">
-                     <div className={cn("p-3 rounded-2xl", stat.bg, stat.color)}>
-                        <stat.icon size={26} />
-                     </div>
-                     <div>
-                        <p className="card-title mb-1.5">{stat.label}</p>
-                        <h3 className="card-value">{stat.value}</h3>
-                     </div>
-                  </div>
-               </motion.div>
+                  icon={stat.icon}
+                  label={stat.label}
+                  value={stat.value}
+                  color={stat.color}
+                  bg={stat.bg}
+               />
             ))}
          </div>
 

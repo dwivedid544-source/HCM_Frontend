@@ -232,12 +232,32 @@ export const AdminProvider = ({ children, user }) => {
     }
   }, []);
 
-  const fetchAuditLogs = useCallback(async () => {
+  const [auditPagination, setAuditPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
+
+  const fetchAuditLogs = useCallback(async (params = {}) => {
     const token = localStorage.getItem('hcm_token');
     if (!token) return;
     try {
-      const res = await adminAPI.getAuditLogs();
-      setSystemLogs(res.data.data || []);
+      const res = await adminAPI.getAuditLogs(params);
+      const rawLogs = res.data?.data || res.data || [];
+      const mapped = rawLogs.map(log => ({
+        id: log.id,
+        level: log.action?.toLowerCase().includes('delete') || log.action?.toLowerCase().includes('reject') ? 'Critical'
+             : log.action?.toLowerCase().includes('security') || log.action?.toLowerCase().includes('auth') || log.action?.toLowerCase().includes('role') ? 'Security'
+             : log.action?.toLowerCase().includes('update') ? 'Warning' : 'Info',
+        module: log.action?.split('_')[0] || 'ADMIN',
+        action: log.action,
+        user: log.user?.email || 'System',
+        time: new Date(log.createdAt).toLocaleString(),
+        ipAddress: log.ipAddress || '127.0.0.1',
+        details: log.details || '',
+        createdAt: log.createdAt
+      }));
+      setSystemLogs(mapped);
+      if (res.data?.pagination) {
+        setAuditPagination(res.data.pagination);
+      }
+      return res.data;
     } catch (err) {
       console.error(err);
       setSystemLogs([]);
@@ -1420,7 +1440,7 @@ export const AdminProvider = ({ children, user }) => {
     integrations, addIntegration, updateIntegration, deleteIntegration,
     appSettings, updateSettings, resetSettings,
     billingPlan, invoices, updatePlan, updateInvoice, exportInvoices,
-    systemLogs, addSystemLog,
+    systemLogs, addSystemLog, fetchAuditLogs, auditPagination,
     reportSchedules, addReportSchedule,
     customReports, addCustomReport, deleteCustomReport,
     loading

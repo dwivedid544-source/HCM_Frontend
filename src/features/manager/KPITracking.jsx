@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useManager } from '../../context/ManagerContext';
+import StatCard from '../../shared/components/ui/StatCard';
 import CenterModal from '../../shared/components/common/CenterModal';
 import Avatar from '../../shared/components/ui/Avatar';
 import PermissionGate from '../../shared/components/common/PermissionGate';
@@ -145,11 +146,12 @@ const KPITracking = () => {
   const handleUpdateKPI = async (e) => {
     e.preventDefault();
     if (selectedGoal) {
-      updateKpi(selectedGoal.id, { 
+      await updateKpi(selectedGoal.id, { 
+        progress: selectedGoal.progress,
+        priority: selectedGoal.priority,
         feedback: feedback
       });
     }
-    showToast('KPI metrics updated successfully.');
     setSelectedGoal(null);
     setFeedback('');
   };
@@ -185,21 +187,14 @@ const KPITracking = () => {
       {/* Stats Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, idx) => (
-          <motion.div
+          <StatCard
             key={idx}
-            whileHover={{ y: -5 }}
-            className="card p-6"
-          >
-            <div className="flex items-center gap-4 text-left">
-               <div className={cn("p-3 rounded-2xl", stat.bg, stat.color)}>
-                  <stat.icon size={26} />
-               </div>
-               <div>
-                  <p className="text-[10px] font-bold text-slate-400 font-bold leading-none mb-1.5">{stat.label}</p>
-                  <h3 className="text-3xl font-black text-slate-900 tracking-tighter dark:text-white">{stat.value}</h3>
-               </div>
-            </div>
-          </motion.div>
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            color={stat.color}
+            bg={stat.bg}
+          />
         ))}
       </div>
 
@@ -353,33 +348,48 @@ const KPITracking = () => {
                   </div>
                </div>
 
-               <div className="space-y-4">
-                  <div className="flex items-center justify-between text-left">
-                     <h4 className="text-[10px] font-bold text-slate-400">Achievement Level</h4>
-                     <span className="text-2xl font-black text-slate-900">{selectedGoal.progress}%</span>
-                  </div>
-                  <div className="relative h-4 bg-slate-50 border border-slate-100 rounded-full overflow-hidden p-1 shadow-inner">
-                     <motion.div 
-                        initial={{ width: 0 }} 
-                        animate={{ width: `${selectedGoal.progress}%` }} 
-                        className="h-full bg-gradient-to-r from-primary-500 to-indigo-600 rounded-full shadow-lg shadow-primary-200"
-                     />
-                  </div>
-               </div>
+                <div className="space-y-4">
+                   <div className="flex items-center justify-between text-left">
+                      <h4 className="text-[10px] font-bold text-slate-400">Achievement Level</h4>
+                      <span className="text-2xl font-black text-slate-900">{selectedGoal.progress}%</span>
+                   </div>
+                   <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={selectedGoal.progress || 0}
+                      onChange={(e) => setSelectedGoal({ ...selectedGoal, progress: parseInt(e.target.value) })}
+                      className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none"
+                   />
+                   <div className="relative h-2.5 bg-slate-50 border border-slate-100 rounded-full overflow-hidden p-0.5 shadow-inner">
+                      <motion.div 
+                         initial={{ width: 0 }} 
+                         animate={{ width: `${selectedGoal.progress}%` }} 
+                         className="h-full bg-gradient-to-r from-primary-500 to-indigo-600 rounded-full shadow-lg"
+                      />
+                   </div>
+                </div>
 
-               <div className="grid grid-cols-2 gap-4 sm:gap-6 text-left">
-                  <div className="p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-100 text-left">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Priority Index</p>
-                     <div className="flex items-center gap-2">
-                        <Star size={16} className={cn(selectedGoal.priority === 'High' ? "text-rose-500 fill-rose-500" : "text-amber-500 fill-amber-500")} />
-                        <span className="text-base font-black text-slate-900">{selectedGoal.priority}</span>
-                     </div>
-                  </div>
-                  <div className="p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-100 text-left">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Weightage</p>
-                     <span className="text-base font-black text-slate-900">30% (Impact)</span>
-                  </div>
-               </div>
+                <div className="grid grid-cols-2 gap-4 sm:gap-6 text-left">
+                   <div className="p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-100 text-left space-y-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Priority Index</p>
+                      <select
+                         className="bg-transparent font-black text-slate-900 border-none outline-none focus:ring-0 p-0 text-sm sm:text-base w-full cursor-pointer"
+                         value={selectedGoal.priority}
+                         onChange={(e) => setSelectedGoal({ ...selectedGoal, priority: e.target.value })}
+                      >
+                         <option value="Low">Low</option>
+                         <option value="Medium">Medium</option>
+                         <option value="High">High</option>
+                         <option value="Critical">Critical</option>
+                      </select>
+                   </div>
+                   <div className="p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-100 text-left">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Weightage</p>
+                      <span className="text-base font-black text-slate-900">30% (Impact)</span>
+                   </div>
+                </div>
 
                <div className="space-y-2 text-left">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">

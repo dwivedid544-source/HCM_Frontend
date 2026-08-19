@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { employeeAPI } from '../../utils/apiService';
 import toast from 'react-hot-toast';
-import { FileUp, Calendar as CalendarIcon, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { FileUp, Calendar as CalendarIcon, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 const EmployeeResignation = () => {
   const [resignation, setResignation] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     reason: '',
     lastWorkingDay: ''
@@ -18,6 +19,8 @@ const EmployeeResignation = () => {
   }, []);
 
   const fetchResignation = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await employeeAPI.getResignation();
       if (res.data.success && res.data.data) {
@@ -25,6 +28,7 @@ const EmployeeResignation = () => {
       }
     } catch (err) {
       if (err.response?.status !== 404) {
+        setError('Failed to load resignation details. Please try again.');
         toast.error('Failed to load resignation status.');
       }
     } finally {
@@ -77,7 +81,26 @@ const EmployeeResignation = () => {
     }
   };
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 min-h-[300px] flex flex-col items-center justify-center text-center bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4">
+        <AlertCircle className="text-red-500 w-12 h-12" />
+        <h3 className="text-lg font-bold">Failed to Load Resignation Details</h3>
+        <p className="text-sm text-gray-500 max-w-md">{error}</p>
+        <button onClick={fetchResignation} className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-medium">
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 min-h-[300px] flex justify-center items-center">
+        <div className="animate-spin h-8 w-8 border-b-2 border-primary-650 rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">

@@ -19,23 +19,27 @@ import {
   Zap,
   Filter,
   Download,
-  Upload
+  Upload,
+  Loader2
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
+import StatCard from '../../shared/components/ui/StatCard';
 import CenterModal from '../../shared/components/layout/CenterModal';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import DatePicker from '../../shared/components/common/DatePicker';
 import PermissionGate from '../../shared/components/common/PermissionGate';
 
 const EmployeeLeave = () => {
-  const { leaves, requestLeave, cancelLeave, showToast } = useEmployee();
+  const { leaves, requestLeave, cancelLeave, showToast, loading, error, refetchAll } = useEmployee();
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [leaveAttachment, setLeaveAttachment] = useState(null);
   const leaveFileInputRef = useRef(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCancellingId, setIsCancellingId] = useState(null);
 
   const balances = [
     { label: 'Sick Leave', value: leaves.balance.sick, total: 10, icon: Stethoscope, color: 'text-rose-600', bg: 'bg-rose-50' },
@@ -45,8 +49,9 @@ const EmployeeLeave = () => {
   ];
 
   const filteredHistory = leaves.requests.filter(item => {
-    const matchesSearch = item.type.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.reason.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!item) return false;
+    const matchesSearch = (item.type || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (item.reason || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'All' ? true : 
                           filterStatus === 'Pending' ? (item.status === 'Pending' || item.status === 'MANAGER_APPROVED') :
                           item.status === filterStatus;
@@ -99,11 +104,21 @@ const EmployeeLeave = () => {
     }
   };
 
-  const handleRequestSubmit = (e) => {
+  const handleRequestSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const formData = new FormData(e.target);
-    const startDate = new Date(formData.get('startDate'));
-    const endDate = new Date(formData.get('endDate'));
+    const startDateVal = formData.get('startDate');
+    const endDateVal = formData.get('endDate');
+
+    if (!startDateVal || !endDateVal) {
+      showToast('Please select both start and end dates', 'error');
+      return;
+    }
+
+    const startDate = new Date(startDateVal);
+    const endDate = new Date(endDateVal);
     const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
     
     if (days <= 0) {
@@ -119,22 +134,65 @@ const EmployeeLeave = () => {
       return;
     }
 
-    requestLeave({
-      leaveType: type,
-      startDate: formData.get('startDate'),
-      endDate: formData.get('endDate'),
-      reason: formData.get('reason'),
-      emergencyContact: formData.get('emergency'),
-      totalDays: days,
-      attachment: leaveAttachment
-    });
-    
-    setLeaveAttachment(null);
-    if (leaveFileInputRef.current) {
-      leaveFileInputRef.current.value = '';
+    setIsSubmitting(true);
+    try {
+      await requestLeave({
+        leaveType: type,
+        startDate: startDateVal,
+        endDate: endDateVal,
+        reason: formData.get('reason'),
+        emergencyContact: formData.get('emergency'),
+        totalDays: days,
+        attachment: leaveAttachment
+      });
+      
+      setLeaveAttachment(null);
+      if (leaveFileInputRef.current) {
+        leaveFileInputRef.current.value = '';
+      }
+      setIsRequestModalOpen(false);
+    } catch (err) {
+      showToast(err.response?.data?.error?.message || 'Failed to submit leave request', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsRequestModalOpen(false);
   };
+
+  const handleCancelLeave = async (id) => {
+    if (isCancellingId) return;
+    setIsCancellingId(id);
+    try {
+      await cancelLeave(id);
+    } catch (err) {
+      showToast(err.response?.data?.error?.message || 'Failed to cancel leave', 'error');
+    } finally {
+      setIsCancellingId(null);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-0 min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4 text-left">
+        <AlertCircle className="text-rose-500 w-12 h-12" />
+        <h3 className="text-lg font-bold text-slate-950 dark:text-white">Failed to Load Time Off Info</h3>
+        <p className="text-sm text-slate-500 max-w-md">{error}</p>
+        <button onClick={refetchAll} className="btn-primary px-6 py-2.5 font-bold flex items-center gap-2">
+          <span>Try Again</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (loading || !leaves) {
+    return (
+      <div className="space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-0 text-left">
+        <div className="text-center py-16">
+          <div className="w-16 h-16 border-4 border-t-indigo-600 border-indigo-100 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-slate-400 dark:text-slate-500">Loading Time Off details...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto">
@@ -164,31 +222,17 @@ const EmployeeLeave = () => {
       {/* Leave Balances */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {balances.map((bal, idx) => (
-          <motion.div
+          <StatCard
             key={idx}
-            whileHover={{ y: -5 }}
-            className="card p-6 group"
-          >
-            <div className="flex items-center justify-between mb-6">
-               <div className={cn("p-3 rounded-2xl group-hover:scale-110 transition-transform", bal.bg, bal.color)}>
-                  <bal.icon size={26} />
-               </div>
-               <span className="text-[10px] font-bold text-slate-400 font-bold px-3 py-1 bg-slate-50 rounded-lg border border-slate-100">
-                  {bal.total} Total
-               </span>
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 font-bold leading-none mb-2">{bal.label}</p>
-              <h3 className="text-3xl font-black text-slate-900 tracking-tight dark:text-white">{bal.value} <span className="text-sm font-bold text-slate-300">Available</span></h3>
-            </div>
-            <div className="mt-6 w-full h-2 bg-slate-50 rounded-full overflow-hidden border border-slate-100 p-[1px]">
-               <motion.div 
-                 initial={{ width: 0 }}
-                 animate={{ width: `${(bal.value / bal.total) * 100}%` }}
-                 className={cn("h-full rounded-full transition-all", bal.color.replace('text', 'bg'))} 
-               />
-            </div>
-          </motion.div>
+            icon={bal.icon}
+            label={bal.label}
+            value={`${bal.value} Available`}
+            sub={`${bal.total} Total Days`}
+            color={bal.color}
+            bg={bal.bg}
+            progress={bal.value}
+            total={bal.total}
+          />
         ))}
       </div>
 
@@ -281,9 +325,19 @@ const EmployeeLeave = () => {
                                )}
                                <div className="flex items-center justify-end gap-2">
                                  {item.status === 'Pending' && (
+<<<<<<< HEAD
                                    <PermissionGate module="leave" action="delete">
                                    <button onClick={async () => { await cancelLeave(item.id); }} className="text-[9px] font-bold text-rose-500 font-bold hover:underline">Cancel</button>
                                    </PermissionGate>
+=======
+                                   <button 
+                                     onClick={() => handleCancelLeave(item.id)} 
+                                     disabled={isCancellingId === item.id}
+                                     className="text-[9px] font-bold text-rose-500 font-bold hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                                   >
+                                     {isCancellingId === item.id ? 'Cancelling...' : 'Cancel'}
+                                   </button>
+>>>>>>> c2dbad0 (updated push)
                                  )}
                                  <p className="text-[10px] font-black text-primary-600 font-bold">{item.managerComment ? 'Reviewed' : 'Awaiting Review'}</p>
                               </div>
@@ -381,9 +435,18 @@ const EmployeeLeave = () => {
             </div>
             
             <div className="pt-4 flex gap-4">
-               <button type="button" onClick={() => setIsRequestModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold">Discard</button>
-               <button type="submit" className="flex-2 py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl shadow-slate-200 active:scale-95 transition-all">Submit Request</button>
-            </div>
+                <button type="button" disabled={isSubmitting} onClick={() => setIsRequestModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold disabled:opacity-50">Discard</button>
+                <button type="submit" disabled={isSubmitting} className="flex-2 py-4 bg-slate-900 text-white rounded-2xl font-bold shadow-xl shadow-slate-200 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <span>Submit Request</span>
+                  )}
+                </button>
+             </div>
          </form>
       </CenterModal>
     </div>

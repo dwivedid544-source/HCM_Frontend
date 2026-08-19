@@ -20,6 +20,7 @@ import {
   Play
 } from 'lucide-react';
 import PageHeader from '../../shared/components/layout/PageHeader';
+import StatCard from '../../shared/components/ui/StatCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../../shared/components/ui/Avatar';
 
@@ -206,22 +207,17 @@ const TimeDashboard = () => {
       />
 
       {/* Stats Board */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, idx) => (
-          <motion.div
+          <StatCard
             key={idx}
-            whileHover={{ y: -4 }}
-            className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-5"
-          >
-            <div className={`p-4 rounded-2xl ${stat.bg} ${stat.color}`}>
-              <stat.icon size={26} />
-            </div>
-            <div>
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5 block">{stat.label}</span>
-              <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight leading-none mb-1">{stat.value}</h3>
-              <span className="text-[10px] font-medium text-slate-400">{stat.sub}</span>
-            </div>
-          </motion.div>
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            sub={stat.sub}
+            color={stat.color}
+            bg={stat.bg}
+          />
         ))}
       </div>
 

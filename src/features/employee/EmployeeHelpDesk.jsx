@@ -56,7 +56,7 @@ const renderFormattedText = (text) => {
 };
 
 const EmployeeHelpDesk = () => {
-  const { profile, tickets, createTicket, replyTicket, deleteTicketMessage, showToast } = useEmployee();
+  const { profile, tickets, createTicket, replyTicket, deleteTicketMessage, showToast, loading, error, refetchAll } = useEmployee();
   const { formatDate } = useDateFormat();
   const [activeTab, setActiveTab] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -277,6 +277,7 @@ const EmployeeHelpDesk = () => {
           confidence: 0.25,
           sources: [],
           isError: true,
+          failedQuery: textToSend,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -306,6 +307,30 @@ const EmployeeHelpDesk = () => {
     ]);
     showToast('Policy conversation reset');
   };
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-0 min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4 text-left">
+        <AlertCircle className="text-rose-500 w-12 h-12" />
+        <h3 className="text-lg font-bold text-slate-950 dark:text-white">Failed to Load Support Ecosystem</h3>
+        <p className="text-sm text-slate-500 max-w-md">{error}</p>
+        <button onClick={refetchAll} className="btn-primary px-6 py-2.5 font-bold flex items-center gap-2">
+          <span>Try Again</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (loading || !tickets) {
+    return (
+      <div className="space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-0 text-left">
+        <div className="text-center py-16">
+          <div className="w-16 h-16 border-4 border-t-indigo-600 border-indigo-100 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-slate-400 dark:text-slate-500">Loading Support tickets...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto text-left">
@@ -676,13 +701,25 @@ const EmployeeHelpDesk = () => {
                             {msg.confidence >= 0.8 ? "✓ Based on company policy" : msg.confidence >= 0.4 ? "Based on available docs" : "Policy document not found"}
                           </span>
 
-                          <button
-                            onClick={() => handleCopyMessage(msg.id, msg.content)}
-                            className="text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-1"
-                          >
-                            {copiedId === msg.id ? <Check size={11} /> : <Copy size={11} />}
-                            <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {msg.isError && msg.failedQuery && (
+                              <button
+                                type="button"
+                                onClick={() => handleSendPolicyQuery(msg.failedQuery)}
+                                className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 rounded-md text-[8.5px] font-bold transition-all flex items-center gap-1"
+                              >
+                                <RefreshCw size={9} />
+                                <span>Retry</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleCopyMessage(msg.id, msg.content)}
+                              className="text-slate-400 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                            >
+                              {copiedId === msg.id ? <Check size={11} /> : <Copy size={11} />}
+                              <span>{copiedId === msg.id ? 'Copied' : 'Copy'}</span>
+                            </button>
+                          </div>
                         </div>
                       )}
 

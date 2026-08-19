@@ -15,6 +15,7 @@ import DatePicker from '../../shared/components/common/DatePicker';
 
 import Button from '../../shared/components/ui/Button';
 import PageHeader from '../../shared/components/ui/PageHeader';
+import StatCard from '../../shared/components/ui/StatCard';
 
 const Onboarding = () => {
    const { formatDate } = useDateFormat();
@@ -219,17 +220,14 @@ const Onboarding = () => {
 
          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, idx) => (
-               <motion.div key={idx} whileHover={{ y: -5 }} className="card">
-                  <div className="flex items-center gap-4">
-                     <div className={cn("p-3 rounded-2xl transition-colors", stat.bg, stat.color)}>
-                        <stat.icon size={26} />
-                     </div>
-                     <div>
-                        <p className="card-title mb-1.5">{stat.label}</p>
-                        <h3 className="card-value">{stat.value}</h3>
-                     </div>
-                  </div>
-               </motion.div>
+               <StatCard
+                  key={idx}
+                  icon={stat.icon}
+                  label={stat.label}
+                  value={stat.value}
+                  color={stat.color}
+                  bg={stat.bg}
+               />
             ))}
          </div>
 

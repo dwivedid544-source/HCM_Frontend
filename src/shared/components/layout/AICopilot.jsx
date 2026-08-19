@@ -362,7 +362,6 @@ const TypingIndicator = () => (
 // ── Main Copilot Component ────────────────────────────────────
 const AICopilot = () => {
   const [isOpen, setIsOpen]     = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -436,34 +435,38 @@ const AICopilot = () => {
       const history = messages.slice(1).map(m => ({ role: m.role, content: m.content }));
       const response = await employeeAPI.aiCopilotChat(text, history, location.pathname);
 
-      if (response.data?.success) {
+      const resData = response.data?.data || response.data || {};
+      const answer = resData.answer || resData.reply || 'I could not generate a response. Please try again.';
+
+      if (response.data?.success || resData.success || resData.answer) {
         setMessages(prev => [
           ...prev,
           {
             role: 'assistant',
-            content: response.data.answer || 'I could not generate a response. Please try again.',
+            content: answer,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            intent: response.data.intent,
-            dataUsed: response.data.dataUsed
+            intent: resData.intent,
+            dataUsed: resData.dataUsed
           }
         ]);
       } else {
-        throw new Error(response.data?.error || 'Failed to get response');
+        throw new Error(resData.error || 'Failed to get response');
       }
     } catch (err) {
       const errMsg = err?.response?.status === 401
         ? 'Please log in again to use the Copilot.'
         : err?.response?.status === 500
         ? 'The AI service encountered an error. Please try again in a moment.'
-        : 'I encountered a connection issue. Please check your network and try again.';
+        : err?.message || 'I encountered a connection issue. Please check your network and try again.';
 
-      setError(errMsg);
+      setError({ message: errMsg, lastAttempt: text });
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
           content: `⚠️ ${errMsg}`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isError: true
         }
       ]);
     } finally {
@@ -486,8 +489,6 @@ const AICopilot = () => {
     }]);
     setError(null);
   };
-
-  const panelWidth = isExpanded ? 'sm:w-[650px] sm:max-w-[700px]' : 'sm:w-[400px] sm:max-w-[440px]';
 
   return (
     <>
@@ -525,20 +526,20 @@ const AICopilot = () => {
             {/* Backdrop (Visible & dims page ONLY on mobile) */}
             <motion.div
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.4 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-slate-900 z-[9990] sm:hidden"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[9990] sm:bg-slate-900/40"
             />
 
             {/* Floating Drawer Container */}
             <motion.div
               ref={panelRef}
-              initial={{ x: '100%', opacity: 0.8 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: '100%', opacity: 0 }}
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-              className={`fixed right-0 sm:right-4 top-0 sm:top-4 bottom-0 sm:bottom-4 w-full ${panelWidth} h-full sm:h-[calc(100vh-32px)] bg-white dark:bg-slate-950 shadow-[0_20px_50px_rgba(0,0,0,0.15)] border-l sm:border border-slate-200/80 dark:border-slate-800 z-[9995] flex flex-col overflow-hidden rounded-none sm:rounded-[24px]`}
+              className={`fixed right-0 top-0 bottom-0 w-full sm:w-[480px] sm:max-w-[480px] bg-white dark:bg-slate-950 shadow-[0_0_50px_rgba(0,0,0,0.25)] border-l border-slate-200/80 dark:border-slate-800 z-[9995] flex flex-col overflow-hidden rounded-none`}
             >
               {/* ── Header ────────────────────────────────────────────── */}
               <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 via-indigo-650 to-violet-650 relative overflow-hidden shrink-0 border-b border-indigo-700/20">
@@ -563,14 +564,6 @@ const AICopilot = () => {
                     className="p-1.5 rounded-lg text-indigo-200 hover:text-white hover:bg-white/10 transition-all focus:outline-none"
                   >
                     <RotateCcw size={14} />
-                  </button>
-                  <button
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    title={isExpanded ? 'Collapse panel' : 'Expand panel'}
-                    aria-label={isExpanded ? 'Collapse panel' : 'Expand panel'}
-                    className="p-1.5 rounded-lg text-indigo-200 hover:text-white hover:bg-white/10 transition-all hidden sm:flex focus:outline-none"
-                  >
-                    {isExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                   </button>
                   <button
                     onClick={() => setIsOpen(false)}
@@ -643,16 +636,21 @@ const AICopilot = () => {
                     className="mx-4 mb-2 px-3.5 py-2.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/60 rounded-xl flex items-start gap-2 text-[11px] text-red-650 dark:text-red-400 shrink-0 shadow-xs"
                   >
                     <AlertCircle size={13} className="mt-0.5 shrink-0" />
-                    <div className="flex-1">
-                      <span className="font-bold">Error:</span> {error}
+                    <div className="flex-1 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold block text-[10px] mb-0.5 opacity-80 uppercase tracking-widest">Error</span>
+                        <span>{error.message}</span>
+                      </div>
+                      {error.lastAttempt && (
+                        <button
+                          onClick={() => handleSend(error.lastAttempt)}
+                          className="px-2 py-1 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-md font-bold text-[10px] transition-all ml-2 border border-red-200 dark:border-red-800 shadow-sm shrink-0 whitespace-nowrap"
+                        >
+                          Retry Message
+                        </button>
+                      )}
                     </div>
-                    <button
-                      onClick={() => handleSend()}
-                      className="px-2 py-0.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded font-semibold text-[10px] transition-all ml-1"
-                    >
-                      Retry
-                    </button>
-                    <button onClick={() => setError(null)} className="shrink-0 text-slate-400 hover:text-slate-650"><X size={12} /></button>
+                    <button onClick={() => setError(null)} className="shrink-0 text-red-400 hover:text-red-600 ml-1"><X size={12} /></button>
                   </motion.div>
                 )}
               </AnimatePresence>

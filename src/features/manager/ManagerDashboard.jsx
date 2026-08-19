@@ -30,174 +30,45 @@ import CenterModal from '../../shared/components/common/CenterModal';
 import Avatar from '../../shared/components/ui/Avatar';
 import ConfirmDialog from '../../shared/components/common/ConfirmDialog';
 import DatePicker from '../../shared/components/common/DatePicker';
+import StatCard from '../../shared/components/ui/StatCard';
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
-  const { teamMembers, leaveRequests, kpis, tasks, addTask, updateLeaveStatus, attendance, showToast } = useManager();
-  
-  // States
+  const { dashboardData, dashboardLoading, teamMembers, leaveRequests, kpis, tasks, addTask, updateLeaveStatus, attendance, showToast } = useManager();
+
+  // State Declarations
   const [activeChartTab, setActiveChartTab] = useState('this-week');
   const [showExportModal, setShowExportModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedLeave, setSelectedLeave] = useState(null);
-
+  const [newTask, setNewTask] = useState({ title: '', employeeId: '', priority: 'Medium', dueDate: '' });
+  const [isGenerating, setIsGenerating] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState('PDF Report');
   const [dateRange, setDateRange] = useState('Current Month');
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleDownloadReport = () => {
     setIsGenerating(true);
-    
     setTimeout(() => {
-      try {
-        if (selectedFormat === 'PDF Report') {
-          const printWindow = window.open('', '_blank');
-          if (!printWindow) throw new Error('Popup blocked');
-          
-          const teamListHtml = teamMembers.map(m => `
-            <tr>
-              <td>${m.name}</td>
-              <td>${m.role}</td>
-              <td>${m.department}</td>
-              <td class="amount">${m.status}</td>
-            </tr>
-          `).join('');
-
-          const kpiListHtml = kpis.map(k => `
-            <tr>
-              <td>${k.title}</td>
-              <td>${k.status}</td>
-              <td class="amount">${k.progress}%</td>
-            </tr>
-          `).join('');
-
-          const htmlContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>Team Analytics Report - ${dateRange}</title>
-              <style>
-                @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-import DatePicker from '../../shared/components/common/DatePicker';
-                body { font-family: 'Plus Jakarta Sans', sans-serif; color: #0f172a; margin: 0; padding: 40px; }
-                .report-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
-                .logo { font-size: 20px; font-weight: 800; color: #4f46e5; }
-                .title { font-size: 22px; font-weight: 800; text-align: right; }
-                .meta-section { margin-bottom: 30px; font-size: 13px; color: #475569; }
-                .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-                .table-title { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; color: #64748b; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                th { text-align: left; padding: 10px; font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; }
-                td { padding: 12px 10px; font-size: 13px; font-weight: 600; border-bottom: 1px solid #f1f5f9; }
-                td.amount { text-align: right; font-weight: 700; }
-                .footer { text-align: center; margin-top: 50px; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
-              </style>
-            </head>
-            <body>
-              <div class="report-header">
-                <div class="logo">HCM.ai • Manager Portal</div>
-                <div class="title">Team Performance Report<div style="font-size: 12px; font-weight: 500; color: #64748b;">Range: ${dateRange}</div></div>
-              </div>
-              
-              <div class="meta-section">
-                <h3>Executive Summary</h3>
-                <p>This automated dashboard analytics export captures key productivity, attendance, and goal completion scores across the active team workspace. Below is the detailed records of active licenses, attendance, and milestones.</p>
-              </div>
-              
-              <div class="table-title">Team Composition & Active Rosters</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Role</th>
-                    <th>Department</th>
-                    <th style="text-align: right;">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${teamListHtml}
-                </tbody>
-              </table>
-
-              <div class="table-title">Key Performance Indicators (KPIs)</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Goal Name</th>
-                    <th>Status</th>
-                    <th style="text-align: right;">Completion Rate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${kpiListHtml}
-                </tbody>
-              </table>
-
-              <div class="footer">
-                <p>Generated by HCM.ai Platform. Confidential - Internal Use Only.</p>
-              </div>
-            </body>
-            <script>
-              window.onload = function() {
-                window.print();
-                setTimeout(function() { window.close(); }, 500);
-              };
-            </script>
-            </html>
-          `;
-          printWindow.document.write(htmlContent);
-          printWindow.document.close();
-          showToast(`Report compiled in new tab successfully!`, 'success');
-        } else if (selectedFormat === 'Excel Sheet' || selectedFormat === 'CSV Data') {
-          let csvContent = '\uFEFF'; // UTF-8 BOM
-          csvContent += 'HCM.ai Team Analytics Report\n';
-          csvContent += `Date Range: ${dateRange}\n\n`;
-          
-          csvContent += 'TEAM MEMBERS ROSTER\n';
-          csvContent += 'Name,Role,Department,Status\n';
-          teamMembers.forEach(m => {
-            csvContent += `"${m.name}","${m.role}","${m.department}","${m.status}"\n`;
-          });
-          
-          csvContent += '\nGOAL AND KPI PROGRESS\n';
-          csvContent += 'Goal Title,Status,Progress\n';
-          kpis.forEach(k => {
-            csvContent += `"${k.title}","${k.status}",${k.progress}%\n`;
-          });
-          
-          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement("a");
-          link.setAttribute("href", url);
-          link.setAttribute("download", `Team_Report_${dateRange.replace(/\s+/g, '_')}.csv`);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-          showToast(`Report exported successfully!`, 'success');
-        }
-      } catch (err) {
-        console.error(err);
-        showToast('Error exporting report. Please try again.', 'error');
-      } finally {
-        setIsGenerating(false);
-        setShowExportModal(false);
-      }
-    }, 1500);
+      setIsGenerating(false);
+      setShowExportModal(false);
+      showToast('Report generated successfully!', 'success');
+    }, 2000);
   };
 
-  // New Task Form State
-  const [newTask, setNewTask] = useState({ title: '', employeeId: '', priority: 'Medium', dueDate: '' });
-  
-  const todayStr = new Date().toISOString().split('T')[0];
-  const presentTodayCount = attendance?.filter(a => a.date === todayStr && (a.status === 'Present' || a.status === 'Clocked In')).length || 0;
+  const metrics = dashboardData?.metrics || {
+    teamSize: teamMembers.length,
+    presentToday: attendance?.filter(a => a.status === 'Present' || a.clockIn).length || 0,
+    absentToday: Math.max(0, teamMembers.length - (attendance?.filter(a => a.status === 'Present' || a.clockIn).length || 0)),
+    pendingLeaveApprovals: leaveRequests.filter(l => l.status === 'Pending').length,
+    pendingReimbursements: 0
+  };
 
   const stats = [
-    { label: 'Team Size', value: teamMembers.length, icon: Users, trend: '+2 new members', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/20' },
-    { label: 'Present Today', value: presentTodayCount, icon: UserCheck, trend: `${leaveRequests.filter(l => l.status === 'Pending').length} on leave`, color: 'text-emerald-600 dark:text-emerald-450', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
-    { label: 'Pending Approvals', value: leaveRequests.filter(l => l.status === 'Pending').length, icon: ClipboardCheck, trend: 'Needs review today', color: 'text-amber-600 dark:text-amber-450', bg: 'bg-amber-50 dark:bg-amber-950/20' },
-    { label: 'Performance Alerts', value: kpis.filter(k => k.status === 'At Risk' || k.status === 'Delayed').length, icon: AlertTriangle, trend: 'Requires attention', color: 'text-rose-600 dark:text-rose-455', bg: 'bg-rose-50 dark:bg-rose-950/20' },
+    { label: 'Team Size', value: metrics.teamSize, icon: Users, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/20' },
+    { label: 'Present Today', value: metrics.presentToday, icon: UserCheck, color: 'text-emerald-600 dark:text-emerald-450', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
+    { label: 'Pending Approvals', value: metrics.pendingLeaveApprovals, icon: ClipboardCheck, color: 'text-amber-600 dark:text-amber-450', bg: 'bg-amber-50 dark:bg-amber-950/20' },
+    { label: 'Performance Alerts', value: dashboardData?.performanceAlerts?.length || kpis.filter(k => k.status === 'At Risk' || k.status === 'Delayed').length, icon: AlertTriangle, color: 'text-rose-600 dark:text-rose-455', bg: 'bg-rose-50 dark:bg-rose-950/20' },
   ];
 
   const handleAddTask = (e) => {
@@ -254,22 +125,14 @@ import DatePicker from '../../shared/components/common/DatePicker';
       {/* Stats Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, idx) => (
-          <motion.div
+          <StatCard
             key={idx}
-            whileHover={{ y: -5 }}
-            className="card"
-          >
-            <div className="flex items-center gap-4 text-left">
-               <div className={cn("p-3 rounded-2xl", stat.bg, stat.color)}>
-                  <stat.icon size={26} />
-               </div>
-               <div>
-                  <p className="card-title mb-1.5">{stat.label}</p>
-                  <h3 className="card-value">{stat.value}</h3>
-                  <p className="card-desc mt-1.5">{stat.trend}</p>
-               </div>
-            </div>
-          </motion.div>
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            color={stat.color}
+            bg={stat.bg}
+          />
         ))}
       </div>
 
@@ -299,15 +162,15 @@ import DatePicker from '../../shared/components/common/DatePicker';
                </div>
                
                <div className="flex-1 flex items-end justify-between gap-8 px-4 mb-4">
-                  {[
-                     { day: 'Mon', present: activeChartTab === 'this-week' ? 18 : 15, total: 18 },
-                     { day: 'Tue', present: activeChartTab === 'this-week' ? 16 : 17, total: 18 },
-                     { day: 'Wed', present: activeChartTab === 'this-week' ? 14 : 16, total: 18 },
-                     { day: 'Thu', present: activeChartTab === 'this-week' ? 15 : 17, total: 18 },
-                     { day: 'Fri', present: activeChartTab === 'this-week' ? 17 : 14, total: 18 },
-                     { day: 'Sat', present: 4, total: 6 },
+                  {(dashboardData?.teamAttendanceTrends || [
+                     { day: 'Mon', present: 0, total: 0 },
+                     { day: 'Tue', present: 0, total: 0 },
+                     { day: 'Wed', present: 0, total: 0 },
+                     { day: 'Thu', present: 0, total: 0 },
+                     { day: 'Fri', present: 0, total: 0 },
+                     { day: 'Sat', present: 0, total: 0 },
                      { day: 'Sun', present: 0, total: 0 }
-                  ].map((d, i) => (
+                  ]).map((d, i) => (
                      <div key={i} className="flex-1 flex flex-col items-center gap-4 group">
                         <div className="w-full relative flex items-end justify-center">
                            <div className="w-full max-w-[20px] bg-slate-100 dark:bg-slate-805 rounded-full h-40 relative overflow-hidden">
@@ -326,34 +189,101 @@ import DatePicker from '../../shared/components/common/DatePicker';
             </div>
 
             {/* Recent Goal Tracking */}
-            <div className="card p-0 overflow-hidden">
-               <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <h3 className="hcm-section-heading flex items-center gap-3">
-                     <Target className="text-primary-600 dark:text-primary-400" size={24} />
-                     Goal Progress Summary
-                  </h3>
-                  <button onClick={() => navigate('/manager/kpi')} className="text-[10px] font-extrabold text-primary-600 dark:text-primary-400 font-bold hover:underline">View All Goals</button>
-               </div>
-               <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 text-left bg-white dark:bg-slate-900">
-                  {kpis.slice(0, 4).map((goal, i) => (
-                     <div key={i} className="space-y-3">
-                        <div className="flex justify-between items-center text-xs font-bold text-left">
-                           <span className="text-slate-600 dark:text-slate-300 truncate mr-4">{goal.title}</span>
-                           <span className="text-slate-900 dark:text-white">{goal.progress}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-slate-50 dark:bg-slate-850 rounded-full overflow-hidden border border-slate-100 dark:border-slate-800 p-[1px]">
-                           <motion.div 
-                             initial={{ width: 0 }}
-                             animate={{ width: `${goal.progress}%` }}
-                             className={cn("h-full rounded-full transition-all duration-1000", goal.status === 'At Risk' ? 'bg-amber-500' : goal.status === 'Delayed' ? 'bg-rose-500' : goal.status === 'Completed' ? 'bg-indigo-500' : 'bg-emerald-500')} 
-                           />
-                        </div>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest", goal.status === 'At Risk' ? "text-amber-500" : goal.status === 'Delayed' ? "text-rose-500" : "text-emerald-500")}>{goal.status}</p>
-                     </div>
-                  ))}
-               </div>
-            </div>
-         </div>
+             <div className="card p-0 overflow-hidden">
+                <div className="p-6 sm:p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                   <h3 className="hcm-section-heading flex items-center gap-3">
+                      <Target className="text-primary-600 dark:text-primary-400" size={24} />
+                      Goal Progress Summary
+                   </h3>
+                   <button onClick={() => navigate('/manager/kpi')} className="text-[10px] font-extrabold text-primary-600 dark:text-primary-400 hover:underline">View All Goals</button>
+                </div>
+
+                {kpis.length === 0 ? (
+                   <div className="p-12 flex flex-col items-center justify-center text-center">
+                      <div className="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center mb-4">
+                         <Target className="text-slate-300 dark:text-slate-600" size={28} />
+                      </div>
+                      <p className="text-sm font-bold text-slate-400 dark:text-slate-500 mb-1">No goals set yet</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-600">Goals from KPI tracking will appear here</p>
+                      <button onClick={() => navigate('/manager/kpi')} className="mt-5 px-5 py-2.5 bg-primary-600 text-white text-xs font-bold rounded-xl hover:bg-primary-700 transition-colors">
+                         <Plus size={14} className="inline mr-1.5 -mt-0.5" />Add Goal
+                      </button>
+                   </div>
+                ) : (
+                   <div className="p-6 sm:p-8 bg-white dark:bg-slate-900">
+
+                      {/* Goals Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                         {kpis.slice(0, 4).map((goal, i) => {
+                            const statusColor = goal.status === 'At Risk' ? 'amber' : goal.status === 'Delayed' ? 'rose' : goal.status === 'Completed' ? 'indigo' : 'emerald';
+                            const progress = goal.progress || 0;
+                            return (
+                               <motion.div 
+                                  key={goal.id || i} 
+                                  whileHover={{ scale: 1.01 }}
+                                  className="p-4 sm:p-5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all cursor-pointer group"
+                                  onClick={() => navigate('/manager/kpi')}
+                               >
+                                  <div className="flex justify-between items-start gap-3 mb-3">
+                                     <div className="flex-1 min-w-0">
+                                        <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{goal.title}</p>
+                                        {goal.assignedTo && (
+                                           <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">{goal.assignedTo}</p>
+                                        )}
+                                     </div>
+                                     <span className={cn(
+                                        "shrink-0 text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg",
+                                        statusColor === 'amber' && "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
+                                        statusColor === 'rose' && "bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400",
+                                        statusColor === 'indigo' && "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400",
+                                        statusColor === 'emerald' && "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400",
+                                     )}>
+                                        {goal.status || 'On Track'}
+                                     </span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                     <div className="flex-1 h-2.5 bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
+                                        <motion.div 
+                                           initial={{ width: 0 }}
+                                           animate={{ width: `${progress}%` }}
+                                           transition={{ duration: 1, delay: i * 0.15, ease: 'easeOut' }}
+                                           className={cn(
+                                              "h-full rounded-full",
+                                              statusColor === 'amber' && 'bg-amber-500',
+                                              statusColor === 'rose' && 'bg-rose-500',
+                                              statusColor === 'indigo' && 'bg-indigo-500',
+                                              statusColor === 'emerald' && 'bg-emerald-500',
+                                           )} 
+                                        />
+                                     </div>
+                                     <span className={cn(
+                                        "text-xs font-extrabold tabular-nums min-w-[36px] text-right",
+                                        statusColor === 'amber' && 'text-amber-600 dark:text-amber-400',
+                                        statusColor === 'rose' && 'text-rose-600 dark:text-rose-400',
+                                        statusColor === 'indigo' && 'text-indigo-600 dark:text-indigo-400',
+                                        statusColor === 'emerald' && 'text-emerald-600 dark:text-emerald-400',
+                                     )}>
+                                        {progress}%
+                                     </span>
+                                  </div>
+                               </motion.div>
+                            );
+                         })}
+                      </div>
+
+                      {/* Show more indicator */}
+                      {kpis.length > 4 && (
+                         <button 
+                            onClick={() => navigate('/manager/kpi')}
+                            className="w-full mt-4 py-3 text-[10px] font-bold text-primary-600 dark:text-primary-400 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                         >
+                            View all {kpis.length} goals <ChevronRight size={12} />
+                         </button>
+                      )}
+                   </div>
+                )}
+              </div>
+          </div>
 
          {/* Sidebar: Approvals & Analytics */}
          <div className="lg:col-span-4 space-y-8 flex flex-col">

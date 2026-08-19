@@ -54,14 +54,14 @@ const AppLayout = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileSidebarOpen(false)}
-              className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 lg:hidden"
+              className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[1000] lg:hidden"
             />
             <motion.div
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-[280px] bg-white z-50 lg:hidden"
+              className="fixed inset-y-0 left-0 w-[280px] bg-white z-[1010] lg:hidden"
             >
               <Sidebar collapsed={false} setCollapsed={() => {}} onItemClick={() => setMobileSidebarOpen(false)} />
             </motion.div>

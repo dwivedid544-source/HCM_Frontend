@@ -24,6 +24,7 @@ import { useAdmin } from '../../context/AdminContext';
 import { usePermissionContext } from '../../context/PermissionContext';
 import { useCurrency } from '../../hooks/useCurrency';
 import PermissionGate from '../../shared/components/common/PermissionGate';
+import StatCard from '../../shared/components/ui/StatCard';
 import { cn } from '../../utils/cn';
 import UserModal from '../../shared/components/admin/UserModal';
 import { adminAPI } from '../../utils/apiService';
@@ -209,22 +210,15 @@ const AdminDashboard = () => {
          {/* KPI Grid */}
          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
             {stats.map((stat, idx) => (
-               <motion.div
+               <StatCard
                   key={idx}
-                  whileHover={{ y: -5 }}
-                  className="card"
-               >
-                  <div className="flex flex-col gap-4">
-                     <div className={cn("p-3 rounded-2xl w-fit", stat.bg, stat.color)}>
-                        <stat.icon size={22} />
-                     </div>
-                     <div>
-                        <p className="card-title">{stat.label}</p>
-                        <h3 className="card-value truncate" title={stat.value}>{stat.value}</h3>
-                        <p className="card-desc">{stat.trend}</p>
-                     </div>
-                  </div>
-               </motion.div>
+                  icon={stat.icon}
+                  label={stat.label}
+                  value={stat.value}
+                  sub={stat.trend}
+                  color={stat.color}
+                  bg={stat.bg}
+               />
             ))}
          </div>
 

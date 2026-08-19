@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useManager } from '../../context/ManagerContext';
+import StatCard from '../../shared/components/ui/StatCard';
 import CenterModal from '../../shared/components/common/CenterModal';
 import PermissionGate from '../../shared/components/common/PermissionGate';
 import DatePicker from '../../shared/components/common/DatePicker';
@@ -121,6 +122,7 @@ const Tasks = () => {
           description: newTask.description,
           priority: newTask.priority || 'Medium',
           dueDate: newTask.deadline,
+          status: newTask.status,
         });
         
         setIsDeploying(false);
@@ -175,21 +177,14 @@ const Tasks = () => {
       {/* Stats Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, idx) => (
-          <motion.div
+          <StatCard
             key={idx}
-            whileHover={{ y: -5 }}
-            className="card p-6"
-          >
-            <div className="flex items-center gap-4 text-left">
-               <div className={cn("p-3 rounded-2xl", stat.bg, stat.color)}>
-                  <stat.icon size={26} />
-               </div>
-               <div>
-                  <p className="text-[10px] font-bold text-slate-400 font-bold leading-none mb-1.5">{stat.label}</p>
-                  <h3 className="text-3xl font-black text-slate-900 tracking-tighter dark:text-white">{stat.value}</h3>
-               </div>
-            </div>
-          </motion.div>
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            color={stat.color}
+            bg={stat.bg}
+          />
         ))}
       </div>
 
@@ -342,7 +337,11 @@ const Tasks = () => {
                              <td className="px-8 py-6 text-right">
                                 <div className="flex flex-col items-end">
                                    <p className="text-xs font-black text-slate-700 tracking-tight">{task.deadline || task.dueDate || 'N/A'}</p>
-                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">OCTOBER</p>
+                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                                      {task.deadline && task.deadline !== 'N/A' && !isNaN(new Date(task.deadline).getTime()) 
+                                         ? new Date(task.deadline).toLocaleDateString('en-US', { month: 'long' }).toUpperCase() 
+                                         : 'N/A'}
+                                   </p>
                                 </div>
                              </td>
                           </tr>
@@ -430,8 +429,22 @@ const Tasks = () => {
                      <MessageSquare size={16} className="text-slate-300" /> Operational Objectives
                   </label>
                   <p className="text-base font-medium text-slate-600 leading-relaxed bg-slate-50 p-6 sm:p-8 rounded-[2rem] italic border border-slate-100">
-                     "This mission focuses on optimizing the core architecture components. Ensure all deliverables follow the latest security protocols and unit test coverage exceeds 95%."
+                     {selectedTask.description ? `"${selectedTask.description}"` : '"No detailed mission scope or deliverables specified."'}
                   </p>
+               </div>
+
+               <div className="space-y-4 text-left">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Update Status Phase</label>
+                  <select 
+                    value={selectedTask.status} 
+                    onChange={(e) => handleStatusChange(selectedTask.id, e.target.value)}
+                    className="input-field h-12 font-bold appearance-none bg-white dark:bg-slate-900 border border-slate-200"
+                  >
+                    <option>Pending</option>
+                    <option>In Progress</option>
+                    <option>Review</option>
+                    <option>Completed</option>
+                  </select>
                </div>
 
                <div className="pt-8 border-t border-slate-50 flex flex-col sm:flex-row gap-3 sm:gap-4">
@@ -440,7 +453,7 @@ const Tasks = () => {
                     className="flex-1 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-3"
                   >
                      <RotateCcw size={18} />
-                     <span>Reassign</span>
+                     <span>Reassign (In Progress)</span>
                   </button>
                   <button 
                     onClick={() => handleStatusChange(selectedTask.id, 'Completed')}

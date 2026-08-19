@@ -37,7 +37,6 @@ export const EmployeeProvider = ({ children }) => {
   // ── FETCH PROFILE ──
   const fetchProfile = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await employeeAPI.getProfile();
       if (res.data?.success && res.data.data) {
         const p = res.data.data;
@@ -74,8 +73,7 @@ export const EmployeeProvider = ({ children }) => {
       }
     } catch (err) {
       showToast('Failed to load profile', 'error');
-    } finally {
-      setLoading(false);
+      throw err;
     }
   }, []);
 
@@ -259,20 +257,35 @@ export const EmployeeProvider = ({ children }) => {
     }
   }, []);
 
+  const initializePortal = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await fetchProfile();
+      await Promise.all([
+        fetchAttendance().catch(() => {}),
+        fetchLeaves().catch(() => {}),
+        fetchPayslips().catch(() => {}),
+        fetchPerformance().catch(() => {}),
+        fetchBenefits().catch(() => {}),
+        fetchTasks().catch(() => {}),
+        fetchTickets().catch(() => {}),
+        fetchAnnouncements().catch(() => {}),
+        fetchHolidays().catch(() => {}),
+        fetchDocuments().catch(() => {})
+      ]);
+    } catch (err) {
+      console.error("Employee Portal Initialization Error:", err);
+      setError("Failed to load employee profile data. Please verify your connection.");
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchProfile, fetchAttendance, fetchLeaves, fetchPayslips, fetchPerformance, fetchBenefits, fetchTasks, fetchTickets, fetchAnnouncements, fetchHolidays, fetchDocuments]);
+
   // ── Initial Load ──
   useEffect(() => {
-    fetchProfile();
-    fetchAttendance();
-    fetchLeaves();
-    fetchPayslips();
-    fetchPerformance();
-    fetchBenefits();
-    fetchTasks();
-    fetchTickets();
-    fetchAnnouncements();
-    fetchHolidays();
-    fetchDocuments();
-  }, []);
+    initializePortal();
+  }, [initializePortal]);
 
   // ── ACTIONS ──
 
@@ -396,63 +409,63 @@ export const EmployeeProvider = ({ children }) => {
 
   const updateGoalProgress = async (id, progress) => {
     try {
-      // Update custom local storage if it's a custom goal
+      if (id && !String(id).startsWith('custom-goal-')) {
+        await employeeAPI.updateGoalProgress(id, progress);
+      }
+      // Update local storage fallback if needed
       const localGoals = JSON.parse(localStorage.getItem('hcm_employee_custom_goals') || '[]');
       const updatedLocal = localGoals.map(g => g.id === id ? { ...g, progress } : g);
       localStorage.setItem('hcm_employee_custom_goals', JSON.stringify(updatedLocal));
 
-      setPerformance(prev => ({
-        ...prev,
-        goals: (prev.goals || []).map(g => g.id === id ? { ...g, progress } : g)
-      }));
-
-      await employeeAPI.updateGoalProgress(id, progress);
-    } catch {
-      // Silently retain state
+      await fetchPerformance();
+      showToast('Goal progress updated successfully');
+    } catch (err) {
+      showToast(err.response?.data?.error?.message || 'Failed to update goal progress', 'error');
+      throw err;
     }
   };
 
   const addGoal = async (newGoal) => {
     try {
-      const goalObj = {
-        id: `custom-goal-${Date.now()}`,
-        title: newGoal.title,
-        priority: newGoal.priority || 'Medium',
-        deadline: newGoal.deadline || 'Q4 2026',
-        progress: parseInt(newGoal.progress || 0),
-        category: newGoal.category || 'Strategic',
-        description: newGoal.description || ''
-      };
+      try {
+        await employeeAPI.createGoal(newGoal);
+      } catch (apiErr) {
+        console.warn('Backend createGoal failed or not available, using local fallback:', apiErr.message);
+        const goalObj = {
+          id: `custom-goal-${Date.now()}`,
+          title: newGoal.title,
+          priority: newGoal.priority || 'Medium',
+          deadline: newGoal.deadline || 'Q4 2026',
+          progress: parseInt(newGoal.progress || 0),
+          category: newGoal.category || 'Strategic',
+          description: newGoal.description || ''
+        };
+        const localGoals = JSON.parse(localStorage.getItem('hcm_employee_custom_goals') || '[]');
+        localStorage.setItem('hcm_employee_custom_goals', JSON.stringify([goalObj, ...localGoals]));
+      }
 
-      const localGoals = JSON.parse(localStorage.getItem('hcm_employee_custom_goals') || '[]');
-      const updatedLocal = [goalObj, ...localGoals];
-      localStorage.setItem('hcm_employee_custom_goals', JSON.stringify(updatedLocal));
-
-      setPerformance(prev => ({
-        ...prev,
-        goals: [goalObj, ...(prev.goals || [])]
-      }));
-
+      await fetchPerformance();
       showToast('New Strategic Goal added successfully!');
     } catch (err) {
       showToast('Failed to add goal', 'error');
+      throw err;
     }
   };
 
   const deleteGoal = async (goalId) => {
     try {
+      if (goalId && !String(goalId).startsWith('custom-goal-')) {
+        await employeeAPI.deleteGoal(goalId);
+      }
       const localGoals = JSON.parse(localStorage.getItem('hcm_employee_custom_goals') || '[]');
       const updatedLocal = localGoals.filter(g => g.id !== goalId);
       localStorage.setItem('hcm_employee_custom_goals', JSON.stringify(updatedLocal));
 
-      setPerformance(prev => ({
-        ...prev,
-        goals: (prev.goals || []).filter(g => g.id !== goalId)
-      }));
-
+      await fetchPerformance();
       showToast('Strategic goal removed');
     } catch (err) {
       showToast('Failed to remove goal', 'error');
+      throw err;
     }
   };
 
@@ -509,7 +522,7 @@ export const EmployeeProvider = ({ children }) => {
 
   const submitResignation = async (data) => {
     try {
-      await employeeAPI.resign(data);
+      await employeeAPI.submitResignation(data);
       showToast('Resignation request submitted successfully');
       await fetchProfile();
       return { success: true };
@@ -551,6 +564,7 @@ export const EmployeeProvider = ({ children }) => {
       showToast,
       submitResignation,
       refetch: { fetchProfile, fetchAttendance, fetchLeaves, fetchPayslips, fetchPerformance, fetchBenefits, fetchTasks, fetchTickets, fetchAnnouncements, fetchHolidays },
+      refetchAll: initializePortal,
     }}>
       {children}
     </EmployeeContext.Provider>

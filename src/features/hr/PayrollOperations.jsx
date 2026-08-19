@@ -1,19 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  DollarSign,
+  Users,
+  Calendar,
+  CheckCircle2,
+  Lock,
+  Play,
+  Sparkles,
+  Loader2,
+  AlertCircle,
+  FileSpreadsheet,
+  RefreshCw,
+  Clock
+} from 'lucide-react';
+import { cn } from '../../utils/cn';
+import { useHR } from '../../context/HRContext';
+import { useCurrency } from '../../hooks/useCurrency';
+import { useDateFormat } from '../../hooks/useDateFormat';
+import PageHeader from '../../shared/components/ui/PageHeader';
+import StatCard from '../../shared/components/ui/StatCard';
+import EmptyState from '../../shared/components/ui/EmptyState';
+import ConfirmDialog from '../../shared/components/admin/ConfirmDialog';
 import api from '../../utils/apiService';
 
 const PayrollOperations = () => {
+  const { employees = [], getPayrollSnapshots, runPayrollBatch, finalizePayroll, showToast } = useHR();
+  const { formatCurrency } = useCurrency();
+  const { formatDate } = useDateFormat();
+
   const [snapshots, setSnapshots] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
-  const [runData, setRunData] = useState({ employeeId: '', month: '2024-10' });
+  const [error, setError] = useState(null);
+
+  // Run Payroll State
+  const [runMonth, setRunMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [selectedEmpId, setSelectedEmpId] = useState('');
+  const [isRunning, setIsRunning] = useState(false);
+
+  // Finalize Confirm Modal State
+  const [snapshotToFinalize, setSnapshotToFinalize] = useState(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   const fetchSnapshots = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.get('/hr/payroll/snapshots');
-      setSnapshots(res.data);
+      setSnapshots(res.data?.data || res.data || []);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load payroll snapshots:', err);
+      setError(err.response?.data?.message || 'Failed to load payroll snapshots. Please check backend connection.');
     } finally {
       setLoading(false);
     }
@@ -23,97 +60,278 @@ const PayrollOperations = () => {
     fetchSnapshots();
   }, []);
 
+  // Stats calculation
+  const stats = useMemo(() => {
+    const totalDisbursed = snapshots.reduce((acc, s) => acc + (s.netSalary || s.netPay || 0), 0);
+    const draftCount = snapshots.filter(s => s.status === 'Draft' || s.status === 'Pending').length;
+    const finalizedCount = snapshots.filter(s => s.status === 'Paid' || s.status === 'Finalized').length;
+
+    return [
+      { label: 'Total Snapshots', value: snapshots.length.toString(), icon: FileSpreadsheet, color: 'text-primary-600 dark:text-primary-400', bg: 'bg-primary-50 dark:bg-primary-950/20' },
+      { label: 'Draft Snapshots', value: draftCount.toString(), icon: Clock, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/20' },
+      { label: 'Finalized & Locked', value: finalizedCount.toString(), icon: Lock, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
+      { label: 'Total Disbursed', value: formatCurrency(totalDisbursed), icon: DollarSign, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/20' },
+    ];
+  }, [snapshots, formatCurrency]);
+
   const handleRunPayroll = async (e) => {
     e.preventDefault();
-    setRunning(true);
+    if (!runMonth) {
+      showToast('Please select a valid payroll month (YYYY-MM).', 'error');
+      return;
+    }
+
+    setIsRunning(true);
     try {
-      await api.post('/hr/payroll/run', runData);
-      alert('Payroll generated successfully!');
-      fetchSnapshots();
+      let targetEmpIds = [];
+      if (selectedEmpId) {
+        targetEmpIds = [selectedEmpId];
+      } else {
+        targetEmpIds = employees.map(emp => emp.id);
+      }
+
+      if (targetEmpIds.length === 0) {
+        showToast('No active employees found to generate payroll.', 'error');
+        setIsRunning(false);
+        return;
+      }
+
+      await runPayrollBatch({ employeeIds: targetEmpIds, month: runMonth });
+      await fetchSnapshots();
+      showToast(`Payroll generated for ${targetEmpIds.length} employee(s) for period ${runMonth}!`, 'success');
     } catch (err) {
-      alert(err.response?.data?.message || 'Error running payroll');
+      console.error(err);
     } finally {
-      setRunning(false);
+      setIsRunning(false);
+    }
+  };
+
+  const handleConfirmFinalize = async () => {
+    if (!snapshotToFinalize) return;
+    setIsFinalizing(true);
+    try {
+      await finalizePayroll(snapshotToFinalize.id);
+      setSnapshotToFinalize(null);
+      await fetchSnapshots();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsFinalizing(false);
     }
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">HR Payroll Operations</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-100 dark:border-gray-700">
-          <h2 className="text-lg font-bold mb-4 dark:text-white">Run Payroll</h2>
+    <div className="space-y-8 pb-12 animate-fade-in relative">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="hcm-page-title">HR Payroll Operations</h1>
+          <p className="hcm-page-subtitle">Calculate monthly compensation, review salary breakdowns, and finalize locked payslips</p>
+        </div>
+        <button
+          onClick={fetchSnapshots}
+          disabled={loading}
+          className="btn-secondary flex items-center gap-2"
+        >
+          <RefreshCw size={16} className={cn(loading && "animate-spin")} />
+          <span>Refresh Data</span>
+        </button>
+      </div>
+
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, idx) => (
+          <StatCard
+            key={idx}
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            color={stat.color}
+            bg={stat.bg}
+          />
+        ))}
+      </div>
+
+      {/* Error Retry Banner */}
+      {error && (
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center justify-between text-rose-700 dark:text-rose-400 text-xs font-bold">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+          <button onClick={fetchSnapshots} className="px-3 py-1 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors">
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Main Grid: Form + Snapshots List */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Run Payroll Form Card */}
+        <div className="lg:col-span-4 card p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 space-y-6">
+          <div>
+            <h3 className="hcm-section-heading flex items-center gap-2">
+              <Play size={18} className="text-primary-600" />
+              Generate Payroll Batch
+            </h3>
+            <p className="hcm-muted-text mt-1">Run automated backend CTC formulas and deduction rules</p>
+          </div>
+
           <form onSubmit={handleRunPayroll} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Employee ID</label>
-              <input 
-                type="text" 
+              <label className="form-label">Payroll Period (Month)</label>
+              <input
+                type="month"
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                value={runData.employeeId}
-                onChange={e => setRunData({...runData, employeeId: e.target.value})}
+                className="input-field h-11"
+                value={runMonth}
+                onChange={e => setRunMonth(e.target.value)}
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Month (YYYY-MM)</label>
-              <input 
-                type="text" 
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                value={runData.month}
-                onChange={e => setRunData({...runData, month: e.target.value})}
-              />
+              <label className="form-label">Target Employee (Optional)</label>
+              <select
+                className="input-field h-11 dark:bg-slate-900"
+                value={selectedEmpId}
+                onChange={e => setSelectedEmpId(e.target.value)}
+              >
+                <option value="">All Direct & Org Employees ({employees.length})</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.fullName || emp.name} ({emp.employeeId || 'EMP'})
+                  </option>
+                ))}
+              </select>
             </div>
-            <button 
-              type="submit" 
-              disabled={running}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors"
+
+            <button
+              type="submit"
+              disabled={isRunning}
+              className="w-full btn-primary py-3 flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary-500/20 active:scale-95"
             >
-              {running ? 'Running...' : 'Generate Payroll'}
+              {isRunning ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>Processing Calculations...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} />
+                  <span>{selectedEmpId ? 'Generate Employee Payroll' : 'Run Org-Wide Payroll Batch'}</span>
+                </>
+              )}
             </button>
           </form>
+
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1.5">
+            <p className="font-bold text-slate-700 dark:text-slate-200">System Payroll Safeguards:</p>
+            <p>• Duplicate payroll runs for identical periods are automatically blocked.</p>
+            <p>• All net pay, taxes, and contributions are calculated on the secure backend server.</p>
+            <p>• Finalizing locks the payroll record and generates permanent payslip records.</p>
+          </div>
         </div>
 
-        <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow border border-gray-100 dark:border-gray-700">
-          <h2 className="text-lg font-bold mb-4 dark:text-white">Recent Payroll Snapshots</h2>
+        {/* Snapshots Table Card */}
+        <div className="lg:col-span-8 card p-0 border-none bg-white dark:bg-slate-900 shadow-soft overflow-hidden">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 className="hcm-section-heading">Recent Payroll Snapshots</h3>
+            <span className="text-xs font-bold text-slate-400">{snapshots.length} total records</span>
+          </div>
+
           {loading ? (
-            <p className="text-gray-500">Loading snapshots...</p>
+            <div className="p-16 flex flex-col items-center justify-center text-slate-400">
+              <Loader2 size={32} className="animate-spin mb-3 text-primary-600" />
+              <p className="text-xs font-bold">Loading payroll snapshots...</p>
+            </div>
+          ) : snapshots.length === 0 ? (
+            <EmptyState
+              icon={FileSpreadsheet}
+              title="No Payroll Snapshots Generated"
+              description="Use the Generate Payroll batch tool to execute monthly salary calculations for your organization."
+            />
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700/50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Employee</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Month</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Gross</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Net Pay</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-slate-800">
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Employee</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Period</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Gross Salary</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Net Pay</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {snapshots.map(s => (
-                    <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                      <td className="px-4 py-3 text-sm dark:text-gray-300">{s.employee?.fullName} ({s.employee?.employeeId})</td>
-                      <td className="px-4 py-3 text-sm dark:text-gray-300 font-medium">{s.month}</td>
-                      <td className="px-4 py-3 text-sm text-green-600 font-mono">${s.grossSalary.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm text-indigo-600 font-mono font-bold">${s.netSalary.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 text-xs rounded-full ${s.status === 'Draft' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-                          {s.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {snapshots.length === 0 && (
-                    <tr><td colSpan="5" className="text-center py-4 text-gray-500">No payroll snapshots found.</td></tr>
-                  )}
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {snapshots.map(s => {
+                    const isFinalized = s.status === 'Paid' || s.status === 'Finalized';
+                    const empName = s.employee?.fullName || 'Employee';
+                    const empCode = s.employee?.employeeId || s.employeeId || 'EMP';
+                    const gross = s.grossSalary || s.grossPay || 0;
+                    const net = s.netSalary || s.netPay || 0;
+
+                    return (
+                      <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="px-6 py-4">
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">{empName}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{empCode}</p>
+                        </td>
+                        <td className="px-6 py-4 text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                          {s.month}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                          {formatCurrency(gross)}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-black text-indigo-600 dark:text-indigo-400">
+                          {formatCurrency(net)}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border inline-flex items-center gap-1",
+                              isFinalized
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800"
+                                : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800"
+                            )}
+                          >
+                            {isFinalized ? <Lock size={10} /> : <Clock size={10} />}
+                            {s.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {isFinalized ? (
+                            <span className="text-[10px] font-bold text-slate-400 italic flex items-center justify-end gap-1">
+                              <Lock size={12} /> Locked
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => setSnapshotToFinalize(s)}
+                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1 ml-auto"
+                            >
+                              <CheckCircle2 size={13} />
+                              <span>Finalize</span>
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialog for Finalizing Payroll */}
+      <ConfirmDialog
+        isOpen={!!snapshotToFinalize}
+        onClose={() => setSnapshotToFinalize(null)}
+        onConfirm={handleConfirmFinalize}
+        title="Finalize & Lock Payroll Snapshot?"
+        message={`Are you sure you want to finalize payroll for ${snapshotToFinalize?.employee?.fullName || 'Employee'} for period ${snapshotToFinalize?.month}? Once finalized, financial values are locked and payslips become accessible.`}
+      />
     </div>
   );
 };

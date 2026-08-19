@@ -7,11 +7,13 @@ import { useDateFormat } from '../../hooks/useDateFormat';
 import { useEmployee } from '../../context/EmployeeContext';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import StatCard from '../../shared/components/ui/StatCard';
 
 const EmployeePayroll = () => {
   const [compensation, setCompensation] = useState(null);
   const [snapshots, setSnapshots] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showPayslipModal, setShowPayslipModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const payslipPrintRef = useRef();
@@ -19,6 +21,7 @@ const EmployeePayroll = () => {
   const [showInsightsModal, setShowInsightsModal] = useState(false);
   const [insightsContent, setInsightsContent] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [aiError, setAiError] = useState(null);
   const [exportingPDF, setExportingPDF] = useState(false);
 
   const { formatCurrency, currencyCode } = useCurrency();
@@ -27,6 +30,7 @@ const EmployeePayroll = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [compRes, snapRes] = await Promise.all([
         api.get('/employee/compensation').catch(() => ({ data: null })),
@@ -36,6 +40,7 @@ const EmployeePayroll = () => {
       setSnapshots(snapRes.data || []);
     } catch (err) {
       console.error('Error fetching payroll data', err);
+      setError('Failed to load compensation and payslips. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -50,7 +55,7 @@ const EmployeePayroll = () => {
     const record = {
       ...s,
       name: emp.fullName || 'Employee',
-      employeeId: emp.employeeId || '-',
+      employeeId: emp.employeeId || 'EMP',
       designation: emp.designation || emp.jobTitle || 'Employee',
       department: emp.department?.name || emp.department || 'General',
       currency: currencyCode,
@@ -68,19 +73,47 @@ const EmployeePayroll = () => {
     if (!selectedRecord || exportingPDF) return;
     setExportingPDF(true);
     try {
-      const element = document.getElementById('payslip-print-container');
+      const element = document.getElementById('payslip-document-content');
       if (!element) {
-        showToast('Could not find payslip content', 'error');
+        showToast('Could not find payslip document element', 'error');
         return;
       }
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+
+      const canvas = await html2canvas(element, { 
+        scale: 2, 
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Payslip_${selectedRecord.month?.replace(/\s/g, '_')}_${selectedRecord.id?.slice(0, 8).toUpperCase()}.pdf`);
-      showToast('PDF downloaded successfully!', 'success');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      const margin = 10; // 10mm margin
+      const printWidth = pageWidth - (margin * 2);
+      const printHeight = (canvas.height * printWidth) / canvas.width;
+      
+      let heightLeft = printHeight;
+      let position = margin;
+
+      pdf.addImage(imgData, 'PNG', margin, position, printWidth, printHeight);
+      heightLeft -= (pageHeight - (margin * 2));
+
+      while (heightLeft > 0) {
+        position = heightLeft - printHeight + margin;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', margin, position, printWidth, printHeight);
+        heightLeft -= (pageHeight - (margin * 2));
+      }
+
+      const periodClean = (selectedRecord.month || 'Period').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const empIdClean = (selectedRecord.employeeId || 'EMP').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Payslip_${periodClean}_${empIdClean}.pdf`;
+      
+      pdf.save(filename);
+      showToast(`Downloaded ${filename}`, 'success');
     } catch (err) {
       console.error('PDF export error:', err);
       showToast('Failed to export PDF', 'error');
@@ -89,33 +122,104 @@ const EmployeePayroll = () => {
     }
   };
 
+  const normalizeAIResponse = (raw) => {
+    if (!raw) return null;
+    let data = raw;
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch { return { reply: raw }; }
+    }
+    if (data.data) {
+      data = data.data;
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data); } catch { return { reply: data }; }
+      }
+    }
+    if (data.reply && typeof data.reply === 'string' && data.reply.trim().startsWith('{')) {
+      try {
+        const parsedReply = JSON.parse(data.reply);
+        if (parsedReply.summary || parsedReply.insights || parsedReply.earnings) {
+          data = parsedReply;
+        }
+      } catch {
+        // Keep text reply
+      }
+    }
+    if (data.summary || data.insights || data.earnings || data.deductions || data.recommendations) {
+      return data;
+    }
+    if (data.reply) {
+      return { reply: data.reply };
+    }
+    return data;
+  };
+
+  const generateFallbackInsights = () => {
+    const empName = compensation?.employee?.fullName || 'Employee';
+    const monthlyCtc = compensation?.monthlyCTC ? formatCurrency(compensation.monthlyCTC) : 'N/A';
+    const recentCount = snapshots.length;
+    const latest = snapshots[0];
+    
+    return {
+      summary: `Payroll Summary for ${empName}: Monthly CTC is ${monthlyCtc}. ${recentCount > 0 ? `Latest payslip for ${latest.month} reflects a Net Pay of ${formatCurrency(latest.netSalary)}.` : 'No processed payslips available yet for detailed breakdown.'}`,
+      earnings: latest ? [
+        { label: 'Basic Salary & Allowances', amount: latest.grossSalary }
+      ] : [],
+      deductions: latest ? [
+        { label: 'Statutory Deductions & Taxes', amount: latest.totalDeductions, explanation: 'Taxes and standard deductions' }
+      ] : [],
+      netPay: latest ? latest.netSalary : (compensation?.monthlyCTC || null),
+      insights: [
+        `Active salary band: ${compensation?.salaryBand?.name || 'Standard Band'}`,
+        recentCount > 0 ? `Total available payslips: ${recentCount}` : 'Awaiting initial payroll run.'
+      ],
+      recommendations: [
+        'Ensure tax saving proofs are submitted to HR before quarterly deadlines.',
+        'Download and store monthly payslips for official record keeping.'
+      ]
+    };
+  };
+
   const handleAIInsights = async () => {
-    if (analyzing) return;
+    setShowInsightsModal(true);
     setAnalyzing(true);
-    showToast('Analyzing payroll with AI...', 'info');
+    setAiError(null);
+    setInsightsContent(null);
+
     try {
-      // Backend ignores body params — reads identity from JWT.
-      // res.data = { success: true, data: { summary, earnings, deductions, netPay, insights, recommendations } }
       const res = await employeeAPI.aiPayrollInsights();
-      const payload = res?.data?.data || res?.data || null;
-      if (payload) {
-        setInsightsContent(payload);
-        setShowInsightsModal(true);
-        showToast('AI Insights generated!', 'success');
+      const rawPayload = res?.data?.data || res?.data || null;
+      const normalized = normalizeAIResponse(rawPayload);
+      
+      if (normalized) {
+        setInsightsContent(normalized);
       } else {
-        showToast('AI returned no data', 'error');
+        setInsightsContent(generateFallbackInsights());
       }
     } catch (err) {
       console.error('AI Insights error:', err);
-      showToast(err?.response?.data?.error || 'Failed to load AI Insights', 'error');
+      const errMsg = err?.response?.data?.error?.message || err?.response?.data?.error || err.message || 'Failed to connect to AI Service.';
+      setAiError(errMsg);
     } finally {
       setAnalyzing(false);
     }
   };
 
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto p-6 min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4 text-left">
+        <AlertCircle className="text-rose-500 w-12 h-12" />
+        <h3 className="text-lg font-bold text-slate-950 dark:text-white">Failed to Load Payroll Data</h3>
+        <p className="text-sm text-slate-500 max-w-md">{error}</p>
+        <button onClick={fetchData} className="btn-primary px-6 py-2.5 font-bold flex items-center gap-2">
+          <span>Try Again</span>
+        </button>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
-      <div className="p-6 flex justify-center items-center min-h-[200px]">
+      <div className="p-6 flex justify-center items-center min-h-[300px]">
         <div className="animate-spin h-10 w-10 border-b-2 border-indigo-600 rounded-full" />
       </div>
     );
@@ -148,55 +252,30 @@ const EmployeePayroll = () => {
 
       {/* ── Summary Cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-full text-green-600">
-              <CheckCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Salary Structure</p>
-              <h3
-                className="text-xl font-bold dark:text-white truncate max-w-[200px]"
-                title={compensation?.salaryStructure?.name || 'Not assigned'}
-              >
-                {compensation?.salaryStructure?.name || 'Not assigned'}
-              </h3>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500">
-            {compensation?.salaryBand ? `Salary Band: ${compensation.salaryBand.name}` : 'Active Compensation Plan'}
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full text-blue-600">
-              <FileText className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Monthly CTC</p>
-              <h3 className="text-2xl font-bold dark:text-white">
-                {compensation ? formatCurrency(compensation.monthlyCTC) : '-'}
-              </h3>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500">Cost to Company per month</p>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-full text-purple-600">
-              <Calendar className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Annual CTC</p>
-              <h3 className="text-2xl font-bold dark:text-white">
-                {compensation ? formatCurrency(compensation.annualCTC) : '-'}
-              </h3>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500">Cost to Company per annum</p>
-        </div>
+        <StatCard
+          icon={CheckCircle}
+          label="Salary Structure"
+          value={compensation?.salaryStructure?.name || 'Not assigned'}
+          sub={compensation?.salaryBand ? `Salary Band: ${compensation.salaryBand.name}` : 'Active Compensation Plan'}
+          color="text-emerald-600 dark:text-emerald-400"
+          bg="bg-emerald-50 dark:bg-emerald-950/30"
+        />
+        <StatCard
+          icon={FileText}
+          label="Monthly CTC"
+          value={compensation ? formatCurrency(compensation.monthlyCTC) : '-'}
+          sub="Cost to Company per month"
+          color="text-blue-600 dark:text-blue-400"
+          bg="bg-blue-50 dark:bg-blue-950/30"
+        />
+        <StatCard
+          icon={Calendar}
+          label="Annual CTC"
+          value={compensation ? formatCurrency(compensation.annualCTC) : '-'}
+          sub="Cost to Company per annum"
+          color="text-purple-600 dark:text-purple-400"
+          bg="bg-purple-50 dark:bg-purple-950/30"
+        />
       </div>
 
       {/* ── Payslips Table ── */}
@@ -267,7 +346,7 @@ const EmployeePayroll = () => {
               </button>
 
               {/* Printable Area */}
-              <div id="payslip-print-container" ref={payslipPrintRef} className="space-y-6">
+              <div id="payslip-document-content" ref={payslipPrintRef} className="space-y-6">
                 {/* Header */}
                 <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4 mt-2">
                   <div>
@@ -419,13 +498,13 @@ const EmployeePayroll = () => {
 
       {/* ── AI Insights Modal ── */}
       <AnimatePresence>
-        {showInsightsModal && insightsContent && (
+        {showInsightsModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-2xl shadow-2xl relative my-8"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 w-full max-w-2xl shadow-2xl relative my-8 text-left"
             >
               {/* Close */}
               <button
@@ -448,103 +527,143 @@ const EmployeePayroll = () => {
 
               <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
 
-                {/* Summary */}
-                {insightsContent.summary && (
-                  <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800">
-                    <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-2">📊 Summary</p>
-                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{insightsContent.summary}</p>
+                {/* 1. LOADING STATE */}
+                {analyzing && (
+                  <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Analyzing your compensation structure and payslips...</p>
+                    <p className="text-xs text-slate-400">Communicating with HCM AI microservice securely via JWT.</p>
                   </div>
                 )}
 
-                {/* Earnings */}
-                {insightsContent.earnings && insightsContent.earnings.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-2">💰 Earnings Breakdown</p>
-                    <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-                      {insightsContent.earnings.map((e, i) => (
-                        <div key={i} className={`flex justify-between items-center px-4 py-2.5 text-sm ${i % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800/50' : 'bg-white dark:bg-slate-900'}`}>
-                          <span className="text-slate-700 dark:text-slate-300">{e.label || e.name}</span>
-                          <span className="font-semibold text-emerald-600">{formatCurrency(e.amount || 0)}</span>
+                {/* 2. ERROR STATE */}
+                {!analyzing && aiError && (
+                  <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl p-6 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle size={20} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-bold text-rose-900 dark:text-rose-300">AI Service Unavailable</h4>
+                        <p className="text-xs text-rose-700 dark:text-rose-400 mt-1">{aiError}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        onClick={handleAIInsights}
+                        className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-colors shadow-sm"
+                      >
+                        Retry Analysis
+                      </button>
+                      <button
+                        onClick={() => { setAiError(null); setInsightsContent(generateFallbackInsights()); }}
+                        className="px-4 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                      >
+                        View Standard Summary
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. PLAIN TEXT RESPONSE STATE */}
+                {!analyzing && !aiError && insightsContent && insightsContent.reply && (
+                  <div className="bg-slate-50 dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-700">
+                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-3">AI Response</p>
+                    <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">{insightsContent.reply}</p>
+                  </div>
+                )}
+
+                {/* 4. STRUCTURED RESPONSE STATE */}
+                {!analyzing && !aiError && insightsContent && !insightsContent.reply && (
+                  <>
+                    {/* Summary */}
+                    {insightsContent.summary && (
+                      <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4 border border-indigo-100 dark:border-indigo-800">
+                        <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider mb-2">📊 Summary</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{insightsContent.summary}</p>
+                      </div>
+                    )}
+
+                    {/* Earnings */}
+                    {insightsContent.earnings && insightsContent.earnings.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-2">💰 Earnings Breakdown</p>
+                        <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+                          {insightsContent.earnings.map((e, i) => (
+                            <div key={i} className={`flex justify-between items-center px-4 py-2.5 text-sm ${i % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800/50' : 'bg-white dark:bg-slate-900'}`}>
+                              <span className="text-slate-700 dark:text-slate-300">{e.label || e.name}</span>
+                              <span className="font-semibold text-emerald-600">{formatCurrency(e.amount || 0)}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                      </div>
+                    )}
 
-                {/* Deductions */}
-                {insightsContent.deductions && insightsContent.deductions.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-2">📉 Deductions Breakdown</p>
-                    <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-                      {insightsContent.deductions.map((d, i) => (
-                        <div key={i} className={`px-4 py-2.5 text-sm ${i % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800/50' : 'bg-white dark:bg-slate-900'}`}>
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-700 dark:text-slate-300">{d.label || d.name}</span>
-                            <span className="font-semibold text-rose-500">-{formatCurrency(d.amount || 0)}</span>
-                          </div>
-                          {d.explanation && (
-                            <p className="text-[11px] text-slate-400 mt-0.5">{d.explanation}</p>
-                          )}
+                    {/* Deductions */}
+                    {insightsContent.deductions && insightsContent.deductions.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-2">📉 Deductions Breakdown</p>
+                        <div className="rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+                          {insightsContent.deductions.map((d, i) => (
+                            <div key={i} className={`px-4 py-2.5 text-sm ${i % 2 === 0 ? 'bg-slate-50 dark:bg-slate-800/50' : 'bg-white dark:bg-slate-900'}`}>
+                              <div className="flex justify-between items-center">
+                                <span className="text-slate-700 dark:text-slate-300">{d.label || d.name}</span>
+                                <span className="font-semibold text-rose-500">-{formatCurrency(d.amount || 0)}</span>
+                              </div>
+                              {d.explanation && (
+                                <p className="text-[11px] text-slate-400 mt-0.5">{d.explanation}</p>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                      </div>
+                    )}
+
+                    {/* Net Pay */}
+                    {insightsContent.netPay != null && (
+                      <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Net Pay</p>
+                          <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-0.5">
+                            {formatCurrency(insightsContent.netPay)}
+                          </p>
+                        </div>
+                        <div className="bg-emerald-100 dark:bg-emerald-800/40 text-emerald-600 dark:text-emerald-300 text-xs font-bold px-3 py-1 rounded-full">
+                          AI Calculated
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Key Insights */}
+                    {insightsContent.insights && insightsContent.insights.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">🔍 Key Insights</p>
+                        <ul className="space-y-2">
+                          {insightsContent.insights.map((insight, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2">
+                              <span className="text-indigo-500 mt-0.5 shrink-0">•</span>
+                              <span>{insight}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {insightsContent.recommendations && insightsContent.recommendations.length > 0 && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
+                        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-2">✅ Recommendations</p>
+                        <ul className="space-y-2">
+                          {insightsContent.recommendations.map((rec, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                              <span className="text-blue-500 mt-0.5 shrink-0">{i + 1}.</span>
+                              <span>{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {/* Net Pay */}
-                {insightsContent.netPay != null && (
-                  <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
-                    <div>
-                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Net Pay</p>
-                      <p className="text-2xl font-black text-emerald-700 dark:text-emerald-400 mt-0.5">
-                        {formatCurrency(insightsContent.netPay)}
-                      </p>
-                    </div>
-                    <div className="bg-emerald-100 dark:bg-emerald-800/40 text-emerald-600 dark:text-emerald-300 text-xs font-bold px-3 py-1 rounded-full">
-                      AI Calculated
-                    </div>
-                  </div>
-                )}
-
-                {/* Empty state when no actual payroll data */}
-                {!insightsContent.earnings?.length && !insightsContent.deductions?.length && !insightsContent.netPay && (
-                  <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-100 dark:border-amber-800 flex items-start gap-3">
-                    <AlertCircle size={16} className="text-amber-500 mt-0.5 shrink-0" />
-                    <p className="text-sm text-amber-700 dark:text-amber-300">
-                      No active payroll records found. Please contact HR to ensure your compensation profile and payslips are set up.
-                    </p>
-                  </div>
-                )}
-
-                {/* Key Insights */}
-                {insightsContent.insights && insightsContent.insights.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">🔍 Key Insights</p>
-                    <ul className="space-y-2">
-                      {insightsContent.insights.map((insight, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2">
-                          <span className="text-indigo-500 mt-0.5 shrink-0">•</span>
-                          <span>{insight}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Recommendations */}
-                {insightsContent.recommendations && insightsContent.recommendations.length > 0 && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-100 dark:border-blue-800">
-                    <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-2">✅ Recommendations</p>
-                    <ul className="space-y-2">
-                      {insightsContent.recommendations.map((rec, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
-                          <span className="text-blue-500 mt-0.5 shrink-0">{i + 1}.</span>
-                          <span>{rec}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
 
               {/* Footer */}

@@ -361,7 +361,6 @@ export const HRProvider = ({ children }) => {
 
   // ── APPLICATION ACTIONS ──
   const updateCandidateStage = async (appId, status) => {
-    // Map display stage names back to backend ENUM values
     const stageToEnum = {
       'Applied': 'APPLIED',
       'Screening': 'SCREENING',
@@ -379,10 +378,44 @@ export const HRProvider = ({ children }) => {
       if (backendStatus === 'HIRED') {
         await fetchEmployees();
       }
-      showToast('Application status updated');
-    } catch {
-      setCandidates(prev => prev.map(c => c.id === appId ? { ...c, stage: status } : c));
-      showToast('Status updated (demo mode)');
+      showToast('Application status updated successfully');
+    } catch (err) {
+      console.error("Failed to update candidate stage:", err);
+      showToast(err.response?.data?.error?.message || 'Failed to update candidate stage', 'error');
+      await fetchApplications();
+      throw err;
+    }
+  };
+
+  const getCandidateAiSummary = async (candidateData) => {
+    try {
+      const res = await hrAPI.getCandidateAiSummary(candidateData);
+      return res.data?.data || res.data;
+    } catch (err) {
+      showToast(err.response?.data?.error?.message || 'Failed to generate AI candidate summary', 'error');
+      throw err;
+    }
+  };
+
+  const runPayrollBatch = async (data) => {
+    try {
+      const res = await hrAPI.runPayrollBatch(data);
+      showToast('Batch payroll generated successfully!');
+      return res.data;
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to generate batch payroll', 'error');
+      throw err;
+    }
+  };
+
+  const finalizePayroll = async (id) => {
+    try {
+      const res = await hrAPI.finalizePayroll(id);
+      showToast('Payroll finalized and locked!');
+      return res.data;
+    } catch (err) {
+      showToast(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to finalize payroll', 'error');
+      throw err;
     }
   };
 
@@ -658,7 +691,8 @@ export const HRProvider = ({ children }) => {
       toast,
       jobs, addJob, updateJob, deleteJob,
       candidates, applications, updateCandidateStage,
-      addCandidate, updateCandidate, deleteCandidate, moveCandidateStage,
+      addCandidate, updateCandidate, deleteCandidate, moveCandidateStage: updateCandidateStage,
+      getCandidateAiSummary, runPayrollBatch, finalizePayroll,
       interviews, scheduleInterview, submitFeedback, addInterview, updateInterview, deleteInterview,
       employees, onboardEmployee, promoteCandidate,
       onboarding, addOnboarding, updateOnboarding, deleteOnboarding, remindManager, sendWelcomeEmail,

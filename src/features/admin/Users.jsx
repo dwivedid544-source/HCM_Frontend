@@ -56,6 +56,7 @@ const Users = () => {
 
   // State
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('All Roles');
   const [deptFilter, setDeptFilter] = useState('All Depts');
   const [statusFilter, setStatusFilter] = useState('All Status');
@@ -68,6 +69,14 @@ const Users = () => {
   const [userToDelete, setUserToDelete] = useState(null);
   const [userToView, setUserToView] = useState(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
   // Derived Data
   const stats = [
     { label: 'Total Employees', value: users.length, icon: UsersIcon, color: 'text-indigo-600', bg: 'bg-indigo-50' },
@@ -78,9 +87,9 @@ const Users = () => {
   const filteredUsers = useMemo(() => {
     return users
       .filter(u => {
-        const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                             u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             u.empId.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = u.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || 
+                             u.email.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                             u.empId.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
         const matchesRole = roleFilter === 'All Roles' || u.role === roleFilter;
         const matchesDept = deptFilter === 'All Depts' || u.department === deptFilter;
         const matchesStatus = statusFilter === 'All Status' || u.status === statusFilter;
@@ -92,7 +101,7 @@ const Users = () => {
         if (sortBy === 'status') return a.status.localeCompare(b.status);
         return 0;
       });
-  }, [users, searchTerm, roleFilter, deptFilter, statusFilter, sortBy]);
+  }, [users, debouncedSearchTerm, roleFilter, deptFilter, statusFilter, sortBy]);
 
   // Handlers
   const handleExport = () => {

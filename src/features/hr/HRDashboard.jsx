@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useHR } from '../../context/HRContext';
+import StatCard from '../../shared/components/ui/StatCard';
 import { useNavigate } from 'react-router-dom';
 
 const HRDashboard = () => {
@@ -154,26 +155,16 @@ const HRDashboard = () => {
       {/* Stats Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, idx) => (
-          <motion.div
+          <StatCard
             key={idx}
-            whileHover={{ y: -5 }}
-            className="card group hover:shadow-lg"
-          >
-            <div className="flex items-center justify-between mb-4">
-               <div className={cn("p-3 rounded-2xl transition-colors", stat.bg, stat.iconColor)}>
-                  <stat.icon size={26} />
-               </div>
-                <div className="flex items-center gap-1 text-emerald-500 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-lg text-[10px] font-bold">
-                   <TrendingUp size={12} />
-                   <span>{stat.trendPct}</span>
-                </div>
-            </div>
-            <div>
-              <p className="card-title mb-2">{stat.label}</p>
-              <h3 className="card-value mb-2">{stat.value}</h3>
-              <p className={cn("text-xs font-bold", stat.trendColor)}>{stat.trend}</p>
-            </div>
-          </motion.div>
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            sub={stat.trend}
+            trendPct={stat.trendPct}
+            color={stat.iconColor}
+            bg={stat.bg}
+          />
         ))}
       </div>
 

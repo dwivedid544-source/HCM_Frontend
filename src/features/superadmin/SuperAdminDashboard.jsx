@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
-import { StatCard } from './StatCard';
+import StatCard from '../../shared/components/ui/StatCard';
 import { cn } from '../../utils/cn';
 import { useCurrency } from '../../hooks/useCurrency';
 

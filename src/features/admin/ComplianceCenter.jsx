@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAdmin } from '../../context/AdminContext';
 import { cn } from '../../utils/cn';
+import StatCard from '../../shared/components/ui/StatCard';
 import ComplianceModal from '../../shared/components/admin/ComplianceModal';
 import AuditArchiveModal from '../../shared/components/admin/AuditArchiveModal';
 import PolicyDrawer from '../../shared/components/admin/PolicyDrawer';
@@ -163,23 +164,16 @@ const ComplianceCenter = () => {
          </div>
 
          {/* Stats Cards */}
-         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, idx) => (
-               <motion.div
+               <StatCard
                   key={idx}
-                  whileHover={{ y: -5 }}
-                  className="card p-4 sm:p-6 min-w-0"
-               >
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                     <div className={cn("p-2.5 sm:p-3 rounded-2xl shrink-0", stat.bg, stat.color)}>
-                        <stat.icon size={22} className="sm:w-[26px] sm:h-[26px]" />
-                     </div>
-                     <div className="min-w-0 flex-1">
-                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 font-bold leading-none mb-1 sm:mb-1.5 truncate">{stat.label}</p>
-                        <h3 className="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight dark:text-white truncate">{stat.value}</h3>
-                     </div>
-                  </div>
-               </motion.div>
+                  icon={stat.icon}
+                  label={stat.label}
+                  value={stat.value}
+                  color={stat.color}
+                  bg={stat.bg}
+               />
             ))}
          </div>
          {/* Main List Area */}

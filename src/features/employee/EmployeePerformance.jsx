@@ -7,9 +7,10 @@ import {
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
 import CenterModal from '../../shared/components/layout/CenterModal';
+import StatCard from '../../shared/components/ui/StatCard';
 
 const EmployeePerformance = () => {
-  const { performance, updateGoalProgress, addGoal, deleteGoal, upsertSkill, deleteSkill, showToast } = useEmployee();
+  const { performance, updateGoalProgress, addGoal, deleteGoal, upsertSkill, deleteSkill, showToast, loading, error, refetchAll } = useEmployee();
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [showReviewHistory, setShowReviewHistory] = useState(false);
   const [showSkillVault, setShowSkillVault] = useState(false);
@@ -21,20 +22,51 @@ const EmployeePerformance = () => {
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillLevel, setNewSkillLevel] = useState(50);
 
+  const totalGoals = performance?.goals?.length || 0;
+  const completedGoals = performance?.goals?.filter(g => (g.progress || 0) === 100).length || 0;
+  const avgProgress = totalGoals > 0 ? Math.round(performance.goals.reduce((a, c) => a + (c.progress || 0), 0) / totalGoals) : 0;
+
   const stats = [
-    { label: 'Platform Rating', value: '4.95', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
-    { label: 'Milestones Hit', value: '18', icon: Target, color: 'text-primary-600', bg: 'bg-primary-50' },
-    { label: 'Core Skills', value: performance.skills.length, icon: Zap, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { label: 'Career Growth', value: 'Exceed Expectations', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Overall Progress', value: `${avgProgress}%`, icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
+    { label: 'Milestones Completed', value: `${completedGoals} / ${totalGoals}`, icon: Target, color: 'text-primary-600', bg: 'bg-primary-50' },
+    { label: 'Core Skills', value: performance?.skills?.length || 0, icon: Zap, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Career Growth', value: avgProgress >= 80 ? 'Exceeding' : avgProgress >= 50 ? 'On Track' : 'In Progress', icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ];
 
-  const handleUpdateProgress = (e) => {
+  const handleUpdateProgress = async (e) => {
     e.preventDefault();
-    const progress = parseInt(e.target.progress.value);
-    updateGoalProgress(selectedGoal.id, progress);
+    const progressVal = parseInt(e.target.progress.value);
+    if (isNaN(progressVal) || progressVal < 0 || progressVal > 100) {
+      showToast('Progress must be a number between 0 and 100', 'error');
+      return;
+    }
+    await updateGoalProgress(selectedGoal.id, progressVal);
     setSelectedGoal(null);
-    showToast(`Goal progress updated to ${progress}%`);
   };
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-0 min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4 text-left">
+        <AlertCircle className="text-rose-500 w-12 h-12" />
+        <h3 className="text-lg font-bold text-slate-950 dark:text-white">Failed to Load Performance Metrics</h3>
+        <p className="text-sm text-slate-500 max-w-md">{error}</p>
+        <button onClick={refetchAll} className="btn-primary px-6 py-2.5 font-bold flex items-center gap-2">
+          <span>Try Again</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (loading || !performance) {
+    return (
+      <div className="space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-0 text-left">
+        <div className="text-center py-16">
+          <div className="w-16 h-16 border-4 border-t-indigo-600 border-indigo-100 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-slate-400 dark:text-slate-500">Loading Performance data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto text-left">
@@ -67,21 +99,14 @@ const EmployeePerformance = () => {
       {/* Stats Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, idx) => (
-          <motion.div
+          <StatCard
             key={idx}
-            whileHover={{ y: -5 }}
-            className="card p-6"
-          >
-            <div className="flex items-center gap-4 text-left">
-               <div className={cn("p-3 rounded-2xl", stat.bg, stat.color)}>
-                  <stat.icon size={26} />
-               </div>
-               <div>
-                  <p className="text-[10px] font-bold text-slate-400 font-bold leading-none mb-1.5">{stat.label}</p>
-                  <h3 className={cn("font-black text-slate-900 tracking-tight leading-tight dark:text-white break-words whitespace-normal", stat.value.toString().length > 15 ? "text-base sm:text-lg lg:text-sm xl:text-lg" : "text-2xl sm:text-3xl")}>{stat.value}</h3>
-               </div>
-            </div>
-          </motion.div>
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            color={stat.color}
+            bg={stat.bg}
+          />
         ))}
       </div>
 
@@ -114,49 +139,57 @@ const EmployeePerformance = () => {
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-50">
-                        {performance.goals.map((goal, i) => (
-                           <tr key={i} className="group hover:bg-slate-50/50 transition-colors">
-                              <td className="px-8 py-7">
-                                 <p className="font-black text-slate-800 text-sm italic">{goal.title}</p>
-                                 <p className="text-[10px] font-bold text-slate-400 font-bold mt-1.5 flex items-center gap-2">
-                                    <ShieldCheck size={10} className="text-emerald-500" /> Priority: {goal.priority}
-                                 </p>
-                              </td>
-                              <td className="px-8 py-7 text-center">
-                                 <div className="flex items-center justify-center gap-2 text-slate-500 font-bold text-[11px] tabular-nums">
-                                    <Clock size={14} className="text-slate-300" />
-                                    {goal.deadline}
-                                 </div>
-                              </td>
-                              <td className="px-8 py-7">
-                                 <div className="flex flex-col gap-2 min-w-[150px]">
-                                    <div className="flex justify-between items-center px-1">
-                                       <span className="text-[10px] font-black text-slate-900">{goal.progress}%</span>
+                        {performance.goals && performance.goals.length > 0 ? (
+                           performance.goals.map((goal, i) => (
+                              <tr key={i} className="group hover:bg-slate-50/50 transition-colors">
+                                 <td className="px-8 py-7">
+                                    <p className="font-black text-slate-800 text-sm italic">{goal.title}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 font-bold mt-1.5 flex items-center gap-2">
+                                       <ShieldCheck size={10} className="text-emerald-500" /> Priority: {goal.priority}
+                                    </p>
+                                 </td>
+                                 <td className="px-8 py-7 text-center">
+                                    <div className="flex items-center justify-center gap-2 text-slate-500 font-bold text-[11px] tabular-nums">
+                                       <Clock size={14} className="text-slate-300" />
+                                       {goal.deadline ? new Date(goal.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Q4 2026'}
                                     </div>
-                                    <div className="w-full h-2 bg-slate-50 rounded-full overflow-hidden border border-slate-100 p-[1px]">
-                                       <motion.div 
-                                         initial={{ width: 0 }}
-                                         animate={{ width: `${goal.progress}%` }}
-                                         className={cn(
-                                            "h-full rounded-full transition-all",
-                                            goal.progress === 100 ? "bg-emerald-500" : goal.priority === 'High' ? "bg-rose-500" : "bg-primary-600"
-                                         )} 
-                                       />
+                                 </td>
+                                 <td className="px-8 py-7">
+                                    <div className="flex flex-col gap-2 min-w-[150px]">
+                                       <div className="flex justify-between items-center px-1">
+                                          <span className="text-[10px] font-black text-slate-900">{goal.progress}%</span>
+                                       </div>
+                                       <div className="w-full h-2 bg-slate-50 rounded-full overflow-hidden border border-slate-100 p-[1px]">
+                                          <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${goal.progress}%` }}
+                                            className={cn(
+                                               "h-full rounded-full transition-all",
+                                               goal.progress === 100 ? "bg-emerald-500" : goal.priority === 'High' ? "bg-rose-500" : "bg-primary-600"
+                                            )} 
+                                          />
+                                       </div>
                                     </div>
-                                 </div>
-                              </td>
-                              <td className="px-8 py-7 text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                     <button onClick={() => setSelectedGoal(goal)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-primary-600 border border-slate-100 rounded-2xl shadow-sm transition-all hover:scale-110" title="Edit Progress">
-                                        <Edit size={16} />
-                                     </button>
-                                     <button onClick={() => deleteGoal(goal.id)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-rose-600 border border-slate-100 rounded-2xl shadow-sm transition-all hover:scale-110" title="Delete Goal">
-                                        <Trash2 size={16} />
-                                     </button>
-                                  </div>
+                                 </td>
+                                 <td className="px-8 py-7 text-right">
+                                     <div className="flex items-center justify-end gap-2">
+                                        <button onClick={() => setSelectedGoal(goal)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-primary-600 border border-slate-100 rounded-2xl shadow-sm transition-all hover:scale-110" title="Edit Progress">
+                                           <Edit size={16} />
+                                        </button>
+                                        <button onClick={() => deleteGoal(goal.id)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-rose-600 border border-slate-100 rounded-2xl shadow-sm transition-all hover:scale-110" title="Delete Goal">
+                                           <Trash2 size={16} />
+                                        </button>
+                                     </div>
+                                 </td>
+                              </tr>
+                           ))
+                        ) : (
+                           <tr>
+                              <td colSpan="4" className="py-12 text-center text-slate-400 font-bold text-xs">
+                                 No active strategic goals found. Click "Add Goal" to create your first milestone!
                               </td>
                            </tr>
-                        ))}
+                        )}
                      </tbody>
                   </table>
                </div>

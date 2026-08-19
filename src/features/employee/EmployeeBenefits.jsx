@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
    Heart, ShieldCheck, Sun, Wallet, Download, MessageSquare, ChevronRight, Plus, ArrowUpRight,
-   Activity, Briefcase, Clock, CheckCircle2, FileText, LifeBuoy, Stethoscope, X, DollarSign, Target
+   Activity, Briefcase, Clock, CheckCircle2, FileText, LifeBuoy, Stethoscope, X, DollarSign, Target, AlertCircle
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
@@ -10,13 +10,14 @@ import { useDateFormat } from '../../hooks/useDateFormat';
 import CenterModal from '../../shared/components/layout/CenterModal';
 import { useCurrency } from '../../hooks/useCurrency';
 import DatePicker from '../../shared/components/common/DatePicker';
+import StatCard from '../../shared/components/ui/StatCard';
 
 const EmployeeBenefits = () => {
   const { formatCurrency, getSymbol, getIcon, masterCurrency } = useCurrency();
   const { formatDate } = useDateFormat();
   const CurrencyIcon = getIcon();
 
-   const { benefits, addBenefitClaim, enrollInBenefit, unenrollFromBenefit, leaves, showToast, profile, createTicket } = useEmployee();
+   const { benefits, addBenefitClaim, enrollInBenefit, unenrollFromBenefit, leaves, showToast, profile, createTicket, loading, error, refetchAll } = useEmployee();
    const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
    const [claimDate, setClaimDate] = useState('');
    const [claimFile, setClaimFile] = useState(null);
@@ -109,6 +110,30 @@ For full terms and conditions, please refer to the corporate intranet.
       showToast('Advisor request submitted! They will contact you shortly.');
    };
 
+   if (error) {
+      return (
+         <div className="max-w-7xl mx-auto px-4 sm:px-0 min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4 text-left">
+            <AlertCircle className="text-rose-500 w-12 h-12" />
+            <h3 className="text-lg font-bold text-slate-950 dark:text-white">Failed to Load Benefits</h3>
+            <p className="text-sm text-slate-500 max-w-md">{error}</p>
+            <button onClick={refetchAll} className="btn-primary px-6 py-2.5 font-bold flex items-center gap-2">
+               <span>Try Again</span>
+            </button>
+         </div>
+      );
+   }
+
+   if (loading || !benefits) {
+      return (
+         <div className="space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-0 text-left">
+            <div className="text-center py-16">
+               <div className="w-16 h-16 border-4 border-t-indigo-600 border-indigo-100 rounded-full animate-spin mx-auto mb-4" />
+               <p className="text-sm text-slate-400 dark:text-slate-500">Loading Perks & Benefits...</p>
+            </div>
+         </div>
+      );
+   }
+
    return (
       <div className="space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto">
          {/* Header Section */}
@@ -132,21 +157,14 @@ For full terms and conditions, please refer to the corporate intranet.
          {/* Stats Cards Section */}
          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, idx) => (
-               <motion.div
+               <StatCard
                   key={idx}
-                  whileHover={{ y: -5 }}
-                  className="card p-6"
-               >
-                  <div className="flex items-center gap-4">
-                     <div className={cn("p-3 rounded-2xl", stat.bg, stat.color)}>
-                        <stat.icon size={26} />
-                     </div>
-                     <div>
-                        <p className="text-[10px] font-bold text-slate-400 font-bold leading-none mb-1.5">{stat.label}</p>
-                        <h3 className="text-3xl font-black text-slate-900 tracking-tight dark:text-white">{stat.value}</h3>
-                     </div>
-                  </div>
-               </motion.div>
+                  icon={stat.icon}
+                  label={stat.label}
+                  value={stat.value}
+                  color={stat.color}
+                  bg={stat.bg}
+               />
             ))}
          </div>
 

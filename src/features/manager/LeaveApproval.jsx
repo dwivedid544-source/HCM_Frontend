@@ -146,12 +146,12 @@ const LeaveApproval = () => {
       try {
          await updateLeaveStatus(id, status);
          setSelectedRequest(null);
-         
+
          const isTeamLead = user?.customRole?.name === 'Team Lead' || !!user?.customRoleId;
-         const message = isTeamLead 
-             ? `Request ${status === 'MANAGER_APPROVED' ? 'approved and sent to manager' : 'rejected'} successfully.`
-             : `Request ${status === 'MANAGER_APPROVED' ? 'approved and sent to HR' : 'rejected'} successfully.`;
-         
+         const message = isTeamLead
+            ? `Request ${status === 'MANAGER_APPROVED' ? 'approved and sent to manager' : 'rejected'} successfully.`
+            : `Request ${status === 'MANAGER_APPROVED' ? 'approved and sent to HR' : 'rejected'} successfully.`;
+
          showToast(message);
       } catch (error) {
          console.error("Failed to update status", error);
@@ -247,8 +247,8 @@ const LeaveApproval = () => {
       setAiLoading(true);
       try {
          const res = await api.aiLeaveRecommendations("all", activeLeaveRequests);
-         if (res && res.data) {
-            setAiData(res.data);
+         if (res && res.data && res.data.success) {
+            setAiData(res.data.data);
          } else {
             setAiData({
                summary: "Team attendance risk is low. Pending leave applications fall across non-overlapping project sprints.",
@@ -542,10 +542,10 @@ const LeaveApproval = () => {
                                              req.status === 'ManagerApproved' || (req.status === 'Pending' && req.canApprove === false) ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/30" :
                                                 "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30"
                                        )}>
-                                          {req.status === 'ManagerApproved' ? 'Pending HR' : 
-                                            (req.status === 'Pending' && req.canApprove === false) ? 
-                                            (req.pendingApproverRole ? `Pending ${req.pendingApproverRole.charAt(0).toUpperCase() + req.pendingApproverRole.slice(1).toLowerCase()} Approval` : 'Pending Manager Approval') 
-                                            : req.status}
+                                          {req.status === 'ManagerApproved' ? 'Pending HR' :
+                                             (req.status === 'Pending' && req.canApprove === false) ?
+                                                (req.pendingApproverRole ? `Pending ${req.pendingApproverRole.charAt(0).toUpperCase() + req.pendingApproverRole.slice(1).toLowerCase()} Approval` : 'Pending Manager Approval')
+                                                : req.status}
                                        </span>
                                     )}
                                  </td>
@@ -580,7 +580,7 @@ const LeaveApproval = () => {
          <CenterModal
             isOpen={showAIModal}
             onClose={() => setShowAIModal(false)}
-            title="✨ HCM AI Leave Recommendations"
+            title="HCM AI Leave Recommendations"
          >
             <div className="p-6 sm:p-8 space-y-6 text-left bg-white dark:bg-slate-900">
                {aiLoading ? (

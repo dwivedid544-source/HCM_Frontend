@@ -7,6 +7,7 @@ import {
   X, Eye, Mail, Phone, Calendar, ArrowRight, 
   Briefcase, Star, MapPin, ExternalLink, Trash2,
   Sparkles, Upload, Users, User, Edit3, ShieldCheck
+  Sparkles, Upload, Users, User, Edit3, AlertCircle
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useHR } from '../../context/HRContext';
@@ -16,7 +17,7 @@ import PermissionGate from '../../shared/components/common/PermissionGate';
 import ImportModal from '../../shared/components/import/ImportModal';
 
 const Candidates = () => {
-  const { candidates, addCandidate, updateCandidate, moveCandidateStage, deleteCandidate, showToast } = useHR();
+  const { candidates, addCandidate, updateCandidate, moveCandidateStage, deleteCandidate, getCandidateAiSummary, showToast } = useHR();
   const { users } = useAdmin();
   const teamMembers = users.filter(u => u.role !== 'Candidate');
   const location = useLocation();
@@ -31,6 +32,56 @@ const Candidates = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredMatch, setFilteredMatch] = useState('');
   const [filteredStatus, setFilteredStatus] = useState('');
+
+  const [candidateSummaryText, setCandidateSummaryText] = useState('');
+  const [isEditedSummary, setIsEditedSummary] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [showConfirmOverwrite, setShowConfirmOverwrite] = useState(false);
+  const [aiSummaryError, setAiSummaryError] = useState(false);
+
+  useEffect(() => {
+    if (selectedCandidate) {
+      setCandidateSummaryText(selectedCandidate.summary || selectedCandidate.coverLetter || '');
+      setIsEditedSummary(false);
+      setAiSummaryError(false);
+    }
+  }, [selectedCandidate]);
+
+  const handleGenerateSummary = async (force = false) => {
+    if (!selectedCandidate) return;
+    if (isEditedSummary && !force) {
+      setShowConfirmOverwrite(true);
+      return;
+    }
+
+    if (!selectedCandidate.name && !selectedCandidate.skills?.length && !selectedCandidate.experience && !selectedCandidate.coverLetter) {
+      showToast('No candidate details or resume data available to generate AI summary.', 'error');
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+    setAiSummaryError(false);
+    try {
+      const result = await getCandidateAiSummary({
+        candidateName: selectedCandidate.name,
+        role: selectedCandidate.role,
+        experience: selectedCandidate.exp || selectedCandidate.experience,
+        skills: selectedCandidate.skills,
+        resumeText: selectedCandidate.coverLetter || ''
+      });
+      if (result && result.summary) {
+        setCandidateSummaryText(result.summary);
+        setIsEditedSummary(false);
+        showToast('AI candidate summary generated!', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      setAiSummaryError(true);
+    } finally {
+      setIsGeneratingSummary(false);
+      setShowConfirmOverwrite(false);
+    }
+  };
 
   const [formData, setFormData] = useState({
     name: '', email: '', role: '', exp: '1 Year', match: 75, status: 'Applied', stage: 'Applied', interviewers: []
@@ -443,6 +494,39 @@ const Candidates = () => {
                      </div>
                   </section>
 
+                  {/* AI Generated Summary Section */}
+                  <section className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                     <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-bold text-slate-450 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                           <Sparkles size={14} className="text-indigo-500" />
+                           AI Candidate Summary
+                        </h3>
+                        <button
+                           onClick={() => handleGenerateSummary(false)}
+                           disabled={isGeneratingSummary}
+                           className="btn-secondary px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800"
+                        >
+                           {isGeneratingSummary ? <Loader2 size={12} className="animate-spin" /> : (aiSummaryError ? <RotateCcw size={12} /> : <Sparkles size={12} />)}
+                           <span>{isGeneratingSummary ? 'Generating...' : aiSummaryError ? 'Retry Generation' : candidateSummaryText ? 'Regenerate' : 'Auto-Generate Summary'}</span>
+                        </button>
+                     </div>
+                     {aiSummaryError && (
+                        <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-lg text-xs font-bold flex items-center gap-2">
+                           <AlertCircle size={14} />
+                           Failed to connect to AI Service. Please ensure the AI server is running on port 5001.
+                        </div>
+                     )}
+                     <textarea
+                        value={candidateSummaryText}
+                        onChange={(e) => {
+                           setCandidateSummaryText(e.target.value);
+                           setIsEditedSummary(true);
+                        }}
+                        className={cn("input-field py-3 resize-none h-28 text-xs font-medium leading-relaxed bg-slate-50 dark:bg-slate-800/30", aiSummaryError && "border-rose-300 bg-rose-50/30")}
+                        placeholder="Click 'Auto-Generate Summary' to parse candidate resume and experience..."
+                     />
+                  </section>
+
                   {selectedCandidate.coverLetter && (
                      <section className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                         <h3 className="text-xs font-bold text-slate-450 dark:text-slate-500 uppercase tracking-[0.2em]">Cover Letter / Statement</h3>
@@ -640,6 +724,14 @@ const Candidates = () => {
         }}
         title="Delete Candidate"
         message={`Are you sure you want to delete ${candidateToDelete?.name}'s application? All related data will be permanently removed.`}
+      />
+
+      <ConfirmDialog
+        isOpen={showConfirmOverwrite}
+        onClose={() => setShowConfirmOverwrite(false)}
+        onConfirm={() => handleGenerateSummary(true)}
+        title="Overwrite Manually Edited Summary?"
+        message="You have manually edited the candidate summary. Generating a new AI summary will overwrite your current edits. Do you wish to proceed?"
       />
     </div>
   );

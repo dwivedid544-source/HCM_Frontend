@@ -15,13 +15,16 @@ import {
   FileText,
   Loader2,
   Upload,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
 import CenterModal from '../../shared/components/layout/CenterModal';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import DatePicker from '../../shared/components/common/DatePicker';
+import StatCard from '../../shared/components/ui/StatCard';
+import { useCurrency } from '../../hooks/useCurrency';
 
 const EmployeeDashboard = () => {
   const { 
@@ -32,9 +35,14 @@ const EmployeeDashboard = () => {
     payroll,
     announcements: contextAnnouncements,
     holidays,
-    showToast
+    loading,
+    error,
+    refetchAll,
+    showToast,
+    tasks
   } = useEmployee();
   const navigate = useNavigate();
+  const { formatCurrency } = useCurrency();
 
   // Mode state for modals
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -87,6 +95,34 @@ const EmployeeDashboard = () => {
     return null;
   }, [payroll]);
 
+  const weeklyChartData = useMemo(() => {
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const now = new Date();
+    return weekdays.map((day, idx) => {
+      const targetDate = new Date();
+      const currentDay = targetDate.getDay();
+      const distance = (idx + 1) - currentDay;
+      targetDate.setDate(targetDate.getDate() + distance);
+      const targetStr = targetDate.toDateString();
+
+      const log = (attendance.history || []).find(h => {
+        if (!h) return false;
+        const d = new Date(h.rawDate || h.date);
+        return d.toDateString() === targetStr;
+      });
+
+      let hours = 0;
+      if (log) {
+        hours = parseFloat(log.totalHours || log.hours || 0);
+      }
+      return { day, hours, logged: !!log };
+    });
+  }, [attendance.history]);
+
+  const hasChartData = useMemo(() => {
+    return weeklyChartData.some(d => d.hours > 0);
+  }, [weeklyChartData]);
+
   // Hook stats cards up to backend state
   const stats = useMemo(() => [
     { 
@@ -95,23 +131,26 @@ const EmployeeDashboard = () => {
       trend: attendance.isClockedIn ? `Since ${new Date(attendance.clockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Ready to start?', 
       icon: Clock, 
       color: attendance.isClockedIn ? 'text-emerald-600 dark:text-emerald-450' : 'text-slate-400 dark:text-slate-500', 
-      bg: attendance.isClockedIn ? 'bg-emerald-50 dark:bg-emerald-950/20' : 'bg-slate-100 dark:bg-slate-800/40' 
+      bg: attendance.isClockedIn ? 'bg-emerald-50 dark:bg-emerald-950/20' : 'bg-slate-100 dark:bg-slate-800/40',
+      onClick: () => navigate('/employee/attendance')
     },
     { 
-      label: 'Pending Leaves', 
-      value: leaves.requests.filter(r => r.status === 'Pending').length, 
-      trend: 'Awaiting approval', 
+      label: 'Leave Balance', 
+      value: `${(leaves?.balance?.annual || 0) + (leaves?.balance?.sick || 0) + (leaves?.balance?.casual || 0)} Days`, 
+      trend: `${leaves?.requests?.filter(r => r.status === 'Pending').length || 0} Pending Requests`, 
       icon: CalendarDays, 
       color: 'text-amber-600 dark:text-amber-455', 
-      bg: 'bg-amber-50 dark:bg-amber-950/20' 
+      bg: 'bg-amber-50 dark:bg-amber-950/20',
+      onClick: () => navigate('/employee/leave')
     },
     { 
       label: 'Salary Status', 
-      value: latestPayslip ? (latestPayslip.status === 'Paid' ? 'Paid' : 'Unpaid') : 'Paid', 
-      trend: latestPayslip ? `Month: ${latestPayslip.month}` : 'Credited on 31st Oct', 
+      value: latestPayslip ? formatCurrency(latestPayslip.netSalary) : (profile?.baseSalary ? formatCurrency(profile.baseSalary) : '--'), 
+      trend: latestPayslip ? `Month: ${latestPayslip.month}` : 'Payroll structure active', 
       icon: Wallet, 
       color: 'text-indigo-600 dark:text-indigo-400', 
-      bg: 'bg-indigo-50 dark:bg-indigo-950/20' 
+      bg: 'bg-indigo-50 dark:bg-indigo-950/20',
+      onClick: () => navigate('/employee/payroll')
     },
     { 
       label: 'Active Goals', 
@@ -119,9 +158,10 @@ const EmployeeDashboard = () => {
       trend: `${(performance?.goals || []).filter(g => g.progress === 100).length} completed`, 
       icon: CheckSquare, 
       color: 'text-primary-600 dark:text-primary-400', 
-      bg: 'bg-primary-50 dark:bg-primary-950/20' 
+      bg: 'bg-primary-50 dark:bg-primary-950/20',
+      onClick: () => navigate('/employee/performance')
     },
-  ], [attendance, leaves, latestPayslip, performance]);
+  ], [attendance, leaves, latestPayslip, performance, profile, formatCurrency, navigate]);
 
   // Hook announcements list to context state with fallbacks
   const announcements = useMemo(() => contextAnnouncements && contextAnnouncements.length > 0 ? contextAnnouncements : [
@@ -313,8 +353,21 @@ const EmployeeDashboard = () => {
     }, 1200);
   };
 
-  // Loading guard — show skeleton while profile hasn't loaded from API
-  if (!profile) {
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
+        <AlertCircle className="text-rose-500 w-12 h-12" />
+        <h3 className="text-lg font-bold text-slate-950 dark:text-white">Failed to Load Dashboard</h3>
+        <p className="text-sm text-slate-500 max-w-md">{error}</p>
+        <button onClick={refetchAll} className="btn-primary px-6 py-2.5 font-bold flex items-center gap-2">
+          <Loader2 size={16} className="animate-spin hidden" />
+          <span>Try Again</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (loading || !profile) {
     return (
       <div className="space-y-8 pb-12 animate-fade-in px-4 sm:px-0">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -333,7 +386,7 @@ const EmployeeDashboard = () => {
           ))}
         </div>
         <div className="text-center text-sm text-slate-400 dark:text-slate-500 font-semibold py-8">
-          <Loader2 size={24} className="animate-spin mx-auto mb-2" />
+          <Loader2 size={24} className="animate-spin mx-auto mb-2 text-indigo-650" />
           Loading your dashboard...
         </div>
       </div>
@@ -344,26 +397,43 @@ const EmployeeDashboard = () => {
 
   return (
     <div className="space-y-8 pb-12 animate-fade-in focus:outline-none px-4 sm:px-0">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="text-left">
-          <h1 className="hcm-page-title">Welcome Back, {profile.fullName ? profile.fullName.split(' ')[0] : 'User'}!</h1>
-          <p className="hcm-page-subtitle text-lg">Everything looks great. You have {safeGoals.filter(g=>g.progress < 100).length} active goals to focus on.</p>
+      {/* Header Section with Profile Summary */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 sm:p-8 bg-slate-900 text-white rounded-[2.5rem] relative overflow-hidden shadow-premium text-left">
+        <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+          <User size={160} />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-6 relative z-10 text-center sm:text-left">
+          <img 
+            src={profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName || 'Employee')}&background=4f46e5&color=fff`} 
+            alt="Profile Avatar" 
+            className="w-20 h-20 rounded-[1.75rem] border-2 border-white/25 object-cover shadow-lg shrink-0"
+          />
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-none text-white">Welcome Back, {profile.fullName ? profile.fullName.split(' ')[0] : 'User'}!</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500 text-white leading-none shadow-[0_0_8px_rgba(16,185,129,0.3)]">Active</span>
+            </div>
+            <p className="text-sm font-bold text-slate-350">{profile.designation || 'Staff Associate'} • {profile.department || 'Operations'}</p>
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-4 gap-y-1.5 text-xs text-slate-450 font-bold mt-1">
+              <span className="flex items-center gap-1.5"><Clock size={14} className="text-indigo-400 shrink-0" /> Shift: {profile.shift?.name || 'Day Shift'}</span>
+              <span className="flex items-center gap-1.5"><CalendarDays size={14} className="text-indigo-400 shrink-0" /> ID: {profile.employeeId || 'EMP-XXXX'}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 relative z-10 w-full md:w-auto">
           <button 
             onClick={handleViewPayslip} 
             disabled={isViewingPayslip}
-            className="btn-secondary flex items-center gap-2 disabled:opacity-50 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 shadow-sm"
+            className="btn-secondary flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-2xl py-3 px-5 text-xs font-bold transition-all disabled:opacity-50"
           >
-            {isViewingPayslip ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
-            <span className="hidden sm:inline">View Payslip</span>
+            {isViewingPayslip ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+            <span>View Payslip</span>
           </button>
           <button 
             onClick={() => setShowLeaveModal(true)} 
-            className="btn-primary flex items-center gap-2 shadow-lg shadow-primary-500/20"
+            className="btn-primary flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-2xl py-3 px-6 text-xs font-bold shadow-xl shadow-primary-500/20 active:scale-95 transition-all"
           >
-             <Plus size={18} />
+             <Plus size={16} />
              <span>Request Leave</span>
           </button>
         </div>
@@ -372,27 +442,20 @@ const EmployeeDashboard = () => {
       {/* Stats Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, idx) => (
-          <motion.div
+          <StatCard
             key={idx}
-            whileHover={{ y: -5 }}
-            className="card group border border-slate-100 dark:border-slate-800/80 bg-white dark:bg-slate-900"
-          >
-            <div className="flex items-center gap-4 text-left">
-               <div className={cn("p-3 rounded-2xl group-hover:scale-110 transition-transform", stat.bg, stat.color)}>
-                  <stat.icon size={26} />
-               </div>
-               <div>
-                  <p className="card-title mb-1.5">{stat.label}</p>
-                  <h3 className="card-value">{stat.value}</h3>
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-bold mt-1.5">{stat.trend}</p>
-               </div>
-            </div>
-          </motion.div>
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            sub={stat.trend}
+            color={stat.color}
+            bg={stat.bg}
+            onClick={stat.onClick}
+          />
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        
         {/* Left Side: Attendance & Activity */}
         <div className="lg:col-span-2 space-y-8">
            
@@ -485,49 +548,167 @@ const EmployeeDashboard = () => {
               </div>
            </div>
 
+           {/* Weekly Activity Chart Card */}
+           <div className="card p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-left">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2 italic">
+                 <Clock className="text-primary-600 dark:text-primary-400 shrink-0" size={22} />
+                 Weekly Activity (Worked Hours)
+              </h3>
+              {!hasChartData ? (
+                 <div className="flex flex-col items-center justify-center py-8 text-center bg-slate-50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-100 dark:border-slate-850">
+                    <AlertCircle size={28} className="text-slate-400 dark:text-slate-500 mb-2 animate-bounce" />
+                    <p className="text-xs font-bold text-slate-500">No attendance activity logged for this week yet.</p>
+                 </div>
+              ) : (
+                 <div className="space-y-4">
+                    <div className="flex items-end justify-between h-36 pt-4 px-4 bg-slate-55 dark:bg-slate-800/20 rounded-2xl">
+                       {weeklyChartData.map((data, idx) => {
+                          const heightPct = Math.min(100, Math.max(8, (data.hours / 10) * 100));
+                          return (
+                             <div key={idx} className="flex flex-col items-center flex-1 group">
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-2 opacity-0 group-hover:opacity-100 transition-opacity leading-none">
+                                   {data.hours} hrs
+                                </span>
+                                <div className="w-8 sm:w-12 bg-slate-100 dark:bg-slate-800 rounded-t-lg overflow-hidden h-24 flex items-end">
+                                   <motion.div 
+                                     initial={{ height: 0 }}
+                                     animate={{ height: `${heightPct}%` }}
+                                     transition={{ duration: 0.6, delay: idx * 0.1 }}
+                                     className={cn(
+                                        "w-full rounded-t-lg transition-colors", 
+                                        data.hours >= 8 ? "bg-emerald-500 group-hover:bg-emerald-600" : "bg-indigo-500 group-hover:bg-indigo-600"
+                                     )}
+                                   />
+                                </div>
+                                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-2">
+                                   {data.day}
+                                </span>
+                             </div>
+                          );
+                       })}
+                    </div>
+                 </div>
+              )}
+           </div>
+
+           {/* Assigned Tasks Card */}
+           <div className="card p-0 overflow-hidden border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 text-left">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                 <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 italic">
+                    <CheckSquare className="text-primary-600 dark:text-primary-400 shrink-0" size={24} />
+                    Assigned Tasks
+                 </h3>
+                 <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-primary-50 dark:bg-primary-950/20 text-primary-600">
+                    {(tasks || []).filter(t => t.status !== 'Completed').length} Pending
+                 </span>
+              </div>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                 {(!tasks || tasks.length === 0) ? (
+                    <div className="p-8 text-center text-slate-400 dark:text-slate-500">
+                       No tasks assigned to you currently. Keep up the good work!
+                    </div>
+                 ) : (
+                    tasks.slice(0, 4).map((task) => (
+                       <div key={task.id} className="p-6 flex items-center justify-between group hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
+                          <div className="flex-1 mr-8 text-left">
+                             <p className="text-sm font-black text-slate-950 dark:text-white leading-tight mb-1">{task.title}</p>
+                             <p className="text-xs text-slate-400 font-semibold">Deadline: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No deadline'}</p>
+                          </div>
+                          <span className={cn(
+                             "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border shadow-sm shrink-0",
+                             task.status === 'Pending' ? "bg-amber-55 dark:bg-amber-950/20 text-amber-600 border-amber-100" :
+                             task.status === 'In_Progress' ? "bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 border-indigo-100" :
+                             "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 border-emerald-100"
+                          )}>
+                             {task.status.replace('_', ' ')}
+                          </span>
+                       </div>
+                    ))
+                 )}
+              </div>
+           </div>
+
            {/* Performance Goals List */}
            <div className="card p-0 overflow-hidden border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                  <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-3 italic">
-                    <CheckSquare className="text-primary-600 dark:text-primary-400" size={24} />
+                    <Target className="text-primary-600 dark:text-primary-400 shrink-0" size={24} />
                     Current Goals
                  </h3>
                  <button onClick={() => navigate('/employee/performance')} className="text-xs font-bold text-primary-600 dark:text-primary-400 font-bold hover:underline active:scale-95 transition-all">Full Strategy</button>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                 {safeGoals.map((goal) => (
-                    <div key={goal.id} className="p-6 flex items-center justify-between group hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
-                       <div className="flex-1 mr-8 text-left">
-                          <div className="flex items-center justify-between mb-2">
-                             <span className="text-sm font-black text-slate-855 dark:text-slate-205 font-bold">{goal.title}</span>
-                             <span className="text-xs font-black text-slate-400 dark:text-slate-500">{goal.progress}%</span>
-                          </div>
-                          <div className="w-full h-2 bg-slate-55 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-100 dark:border-slate-800 p-[1px]">
-                             <motion.div 
-                               initial={{ width: 0 }}
-                               animate={{ width: `${goal.progress}%` }}
-                               className={cn(
-                                 "h-full rounded-full transition-all",
-                                 goal.progress > 70 ? "bg-emerald-500" : goal.progress > 30 ? "bg-amber-500" : "bg-primary-500"
-                                )}
-                             />
-                          </div>
-                       </div>
-                       <span className={cn(
-                          "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border shadow-sm",
-                          goal.priority === 'High' ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30" : "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800"
-                       )}>
-                          {goal.priority}
-                       </span>
+                 {safeGoals.length === 0 ? (
+                    <div className="p-8 text-center text-slate-400 dark:text-slate-500">
+                       No goals currently assigned.
                     </div>
-                 ))}
+                 ) : (
+                    safeGoals.map((goal) => (
+                       <div key={goal.id} className="p-6 flex items-center justify-between group hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
+                          <div className="flex-1 mr-8 text-left">
+                             <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-black text-slate-855 dark:text-slate-205 font-bold">{goal.title}</span>
+                                <span className="text-xs font-black text-slate-400 dark:text-slate-500">{goal.progress}%</span>
+                             </div>
+                             <div className="w-full h-2 bg-slate-55 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-100 dark:border-slate-800 p-[1px]">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${goal.progress}%` }}
+                                  className={cn(
+                                    "h-full rounded-full transition-all",
+                                    goal.progress > 70 ? "bg-emerald-500" : goal.progress > 30 ? "bg-amber-500" : "bg-primary-500"
+                                   )}
+                                />
+                             </div>
+                          </div>
+                          <span className={cn(
+                             "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border shadow-sm shrink-0",
+                             goal.priority === 'High' ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30" : "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800"
+                          )}>
+                             {goal.priority}
+                          </span>
+                       </div>
+                    ))
+                 )}
               </div>
            </div>
         </div>
 
         {/* Right Side: Announcements & Quick Actions */}
-        <div className="space-y-8 h-full">
+        <div className="space-y-8 h-full text-left">
            
+           {/* Recent Leave Requests Card */}
+           <div className="card p-8 group hover:shadow-xl transition-all text-left dark:bg-slate-900 border border-slate-100 dark:border-slate-800 bg-white">
+              <div className="flex items-center justify-between mb-8">
+                 <h3 className="text-lg font-bold text-slate-900 dark:text-white italic tracking-tight">Recent Leave Requests</h3>
+                 <button onClick={() => navigate('/employee/leave')} className="text-xs font-bold text-primary-600 hover:underline">View All</button>
+              </div>
+              <div className="space-y-4">
+                 {(!leaves.requests || leaves.requests.length === 0) ? (
+                    <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-xs">
+                       No leave history found.
+                    </div>
+                 ) : (
+                    leaves.requests.slice(0, 3).map((req, idx) => (
+                       <div key={idx} className="flex justify-between items-start p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+                          <div className="space-y-1">
+                             <p className="text-xs font-bold text-slate-900 dark:text-white">{req.leaveType || req.type}</p>
+                             <p className="text-[10px] text-slate-450">{req.startDate} to {req.endDate}</p>
+                          </div>
+                          <span className={cn(
+                             "px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border shrink-0",
+                             req.status === 'Approved' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                             req.status === 'Pending' ? "bg-amber-50 text-amber-600 border-amber-100" :
+                             "bg-rose-50 text-rose-600 border-rose-100"
+                          )}>
+                             {req.status}
+                          </span>
+                       </div>
+                    ))
+                 )}
+              </div>
+           </div>
+
            {/* Announcements Panel */}
             <div className="card p-8 bg-slate-900 dark:bg-slate-950 text-white border-none shadow-premium relative overflow-hidden group h-full">
                <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000">

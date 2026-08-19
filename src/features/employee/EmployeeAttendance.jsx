@@ -18,17 +18,20 @@ import {
   ArrowRight,
   Timer,
   Download,
+  Loader2,
   Search,
   Filter,
-  Users
+  Users,
+  Zap
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
+import StatCard from '../../shared/components/ui/StatCard';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import CenterModal from '../../shared/components/layout/CenterModal';
 
 const EmployeeAttendance = () => {
-  const { attendance, clockIn, clockOut, showToast, refetch, profile, holidays, leaves } = useEmployee();
+  const { attendance, clockIn, clockOut, showToast, refetch, profile, holidays, leaves, loading, error, refetchAll } = useEmployee();
   const { formatDate } = useDateFormat();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +43,10 @@ const EmployeeAttendance = () => {
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedDayDetail, setSelectedDayDetail] = useState(null);
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   useEffect(() => {
     refetch.fetchAttendance();
@@ -194,15 +201,31 @@ const EmployeeAttendance = () => {
   const currentMonthYearStr = currentDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
 
   const filteredHistory = (attendance.history || []).filter(item => {
-    const matchesSearch = item.date.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          item.mode.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!item) return false;
+    const matchesSearch = (item.status || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (item.mode || '').toLowerCase().includes(searchTerm.toLowerCase());
                           
     const itemDate = new Date(item.rawDate || item.date);
-    const matchesMonth = itemDate.getMonth() === currentDate.getMonth() && 
-                         itemDate.getFullYear() === currentDate.getFullYear();
+    itemDate.setHours(0, 0, 0, 0);
+
+    let matchesDateRange = true;
+    if (startDateFilter) {
+      const sDate = new Date(startDateFilter);
+      sDate.setHours(0, 0, 0, 0);
+      matchesDateRange = matchesDateRange && (itemDate >= sDate);
+    }
+    if (endDateFilter) {
+      const eDate = new Date(endDateFilter);
+      eDate.setHours(23, 59, 59, 999);
+      matchesDateRange = matchesDateRange && (itemDate <= eDate);
+    }
+
+    const matchesMonth = startDateFilter || endDateFilter ? true : (
+      itemDate.getMonth() === currentDate.getMonth() && 
+      itemDate.getFullYear() === currentDate.getFullYear()
+    );
                          
-    return matchesSearch && matchesMonth;
+    return matchesSearch && matchesMonth && matchesDateRange;
   });
 
   const totalPresentDays = filteredHistory.reduce((total, h) => {
@@ -213,11 +236,24 @@ const EmployeeAttendance = () => {
   }, 0);
   const lateIncidents = filteredHistory.filter(h => h.status === 'Late').length;
 
+  const totalHoursSum = useMemo(() => {
+    let sum = 0;
+    filteredHistory.forEach(h => {
+      const hrs = parseFloat(h.totalHours || h.hours || 0);
+      sum += hrs;
+    });
+    return sum.toFixed(1);
+  }, [filteredHistory]);
+
+  const overtimeMarked = useMemo(() => {
+    return filteredHistory.filter(h => parseFloat(h.overtimeMinutes || h.overtime || 0) > 0).length;
+  }, [filteredHistory]);
+
   const stats = [
     { label: 'Present Days', value: totalPresentDays, icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/20' },
     { label: 'Late Marking', value: lateIncidents, icon: Clock, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/20' },
-    { label: 'Total Mode', value: mode, icon: Monitor, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/20' },
-    { label: 'Working Mode', value: mode, icon: MapPin, color: 'text-primary-600 dark:text-primary-400', bg: 'bg-primary-50 dark:bg-primary-950/20' },
+    { label: 'Total Worked Hours', value: `${totalHoursSum} hrs`, icon: Timer, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-950/20' },
+    { label: 'Overtime Logs', value: `${overtimeMarked} Days`, icon: Zap, color: 'text-primary-600 dark:text-primary-400', bg: 'bg-primary-50 dark:bg-primary-950/20' },
   ];
 
   const handleExport = () => {
@@ -242,18 +278,26 @@ const EmployeeAttendance = () => {
   };
 
   const handleClockIn = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await clockIn(mode);
     } catch (err) {
       showToast(err.response?.data?.error?.message || 'Failed to clock in', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleClockOut = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await clockOut();
     } catch (err) {
       showToast(err.response?.data?.error?.message || 'Failed to clock out', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -266,27 +310,59 @@ const EmployeeAttendance = () => {
     showToast(isOnBreak ? 'Resuming work session' : 'Coffee break started');
   };
 
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-0 min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
+        <AlertCircle className="text-rose-500 w-12 h-12" />
+        <h3 className="text-lg font-bold text-slate-950 dark:text-white">Failed to Load Attendance Tracker</h3>
+        <p className="text-sm text-slate-500 max-w-md">{error}</p>
+        <button onClick={refetchAll} className="btn-primary px-6 py-2.5 font-bold flex items-center gap-2">
+          <span>Try Again</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (loading || !profile) {
+    return (
+      <div className="space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-0">
+        <div className="text-center py-16">
+          <div className="w-16 h-16 border-4 border-t-indigo-600 border-indigo-100 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-slate-400 dark:text-slate-500">Loading Attendance Tracker...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto text-left">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="hcm-page-title">Time & Attendance</h1>
-          <p className="hcm-page-subtitle">Real-time work session tracking and historical records</p>
+          <p className="hcm-page-subtitle">Real-time work session tracking and historical records ({localTimezone})</p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={handleExport} className="btn-secondary px-6 py-2.5 flex items-center gap-2">
+          <button onClick={handleExport} disabled={isSubmitting} className="btn-secondary px-6 py-2.5 flex items-center gap-2 disabled:opacity-50">
             <Download size={18} />
             <span>Export CSV</span>
           </button>
           {attendance.isClockedIn ? (
-            <button onClick={handleClockOut} className="btn-primary bg-rose-600 hover:bg-rose-700 px-8 py-2.5 flex items-center gap-2 shadow-xl shadow-rose-100 dark:shadow-none ring-4 ring-white dark:ring-slate-900">
-              <LogOut size={18} />
+            <button 
+              onClick={handleClockOut} 
+              disabled={isSubmitting}
+              className="btn-primary bg-rose-600 hover:bg-rose-700 px-8 py-2.5 flex items-center gap-2 shadow-xl shadow-rose-100 dark:shadow-none ring-4 ring-white dark:ring-slate-900 disabled:opacity-50"
+            >
+              {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <LogOut size={18} />}
               <span>Clock Out</span>
             </button>
           ) : (
-            <button onClick={handleClockIn} className="btn-primary px-8 py-2.5 flex items-center gap-2 shadow-xl shadow-primary-200 dark:shadow-none">
-              <LogIn size={18} />
+            <button 
+              onClick={handleClockIn} 
+              disabled={isSubmitting}
+              className="btn-primary px-8 py-2.5 flex items-center gap-2 shadow-xl shadow-primary-200 dark:shadow-none disabled:opacity-50"
+            >
+              {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <LogIn size={18} />}
               <span>Clock In</span>
             </button>
           )}
@@ -296,21 +372,14 @@ const EmployeeAttendance = () => {
       {/* Stats Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, idx) => (
-          <motion.div
+          <StatCard
             key={idx}
-            whileHover={{ y: -5 }}
-            className="card transition-all"
-          >
-            <div className="flex items-center gap-4">
-               <div className={cn("p-3 rounded-2xl", stat.bg, stat.color)}>
-                  <stat.icon size={26} />
-               </div>
-               <div>
-                  <p className="card-title mb-1.5">{stat.label}</p>
-                  <h3 className="card-value">{stat.value}</h3>
-               </div>
-            </div>
-          </motion.div>
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+            color={stat.color}
+            bg={stat.bg}
+          />
         ))}
       </div>
 
@@ -337,17 +406,24 @@ const EmployeeAttendance = () => {
                     <span className="text-[9px] font-bold leading-none">{isOnBreak ? "Resume" : "Coffee Break"}</span>
                  </button>
                  <div className="relative group/mode">
-                    <button className="w-full flex flex-col items-center gap-4 p-5 rounded-2xl bg-white/10 border border-white/5 hover:bg-white/15 transition-all">
+                    <button 
+                      disabled={attendance.isClockedIn}
+                      className="w-full flex flex-col items-center gap-4 p-5 rounded-2xl bg-white/10 border border-white/5 hover:bg-white/15 transition-all disabled:opacity-75 disabled:cursor-not-allowed"
+                    >
                        <div className="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-500 flex items-center justify-center mb-1 group-hover/mode:rotate-12 transition-transform">
                           <Monitor size={24} />
                        </div>
-                       <span className="text-[9px] font-bold leading-none">{mode} Mode</span>
+                       <span className="text-[9px] font-bold leading-none">
+                         {attendance.isClockedIn ? `${attendance.mode || 'Office'} (Active)` : `${mode} Mode`}
+                       </span>
                     </button>
-                    <div className="absolute bottom-full left-0 w-full mb-2 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-800 opacity-0 group-hover/mode:opacity-100 pointer-events-none group-hover/mode:pointer-events-auto transition-all p-1 transform translate-y-2 group-hover/mode:translate-y-0">
-                       {['Office', 'Remote', 'Hybrid'].map(m => (
-                          <button key={m} onClick={() => { setMode(m); showToast(`Work mode changed to ${m}`); }} className="w-full p-3 text-[10px] font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-left transition-colors">{m}</button>
-                       ))}
-                    </div>
+                    {!attendance.isClockedIn && (
+                      <div className="absolute bottom-full left-0 w-full mb-2 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-800 opacity-0 group-hover/mode:opacity-100 pointer-events-none group-hover/mode:pointer-events-auto transition-all p-1 transform translate-y-2 group-hover/mode:translate-y-0">
+                         {['Office', 'Remote', 'Hybrid'].map(m => (
+                            <button key={m} onClick={() => { setMode(m); showToast(`Work mode changed to ${m}`); }} className="w-full p-3 text-[10px] font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-left transition-colors">{m}</button>
+                         ))}
+                      </div>
+                    )}
                  </div>
               </div>
            </div>
@@ -411,7 +487,7 @@ const EmployeeAttendance = () => {
            
            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight italic">Attendance History</h3>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                  <div className="relative">
                     <Search className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" size={16} />
                     <input 
@@ -419,14 +495,41 @@ const EmployeeAttendance = () => {
                       placeholder="Search history..." 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="input-field pl-10 pr-4 py-2 text-xs font-bold w-48" 
+                      className="input-field pl-10 pr-4 py-2 text-xs font-bold w-40" 
                     />
                  </div>
-                 <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-                    <button onClick={handlePrevMonth} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white"><ChevronLeft size={18} /></button>
-                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 font-bold px-4">{currentMonthYearStr}</span>
-                    <button onClick={handleNextMonth} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white"><ChevronRight size={18} /></button>
+                 <div className="flex items-center gap-2">
+                    <input 
+                      type="date" 
+                      value={startDateFilter}
+                      onChange={(e) => setStartDateFilter(e.target.value)}
+                      className="input-field py-1.5 px-3 text-[10px] font-bold w-32 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
+                      placeholder="Start Date"
+                    />
+                    <span className="text-[10px] text-slate-400 font-bold">to</span>
+                    <input 
+                      type="date" 
+                      value={endDateFilter}
+                      onChange={(e) => setEndDateFilter(e.target.value)}
+                      className="input-field py-1.5 px-3 text-[10px] font-bold w-32 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
+                      placeholder="End Date"
+                    />
+                    {(startDateFilter || endDateFilter) && (
+                       <button 
+                         onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}
+                         className="p-1 px-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors text-[9px] font-black uppercase tracking-wider border border-rose-200/50"
+                       >
+                         Clear
+                       </button>
+                    )}
                  </div>
+                 {!startDateFilter && !endDateFilter && (
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+                       <button onClick={handlePrevMonth} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white"><ChevronLeft size={18} /></button>
+                       <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 font-bold px-4">{currentMonthYearStr}</span>
+                       <button onClick={handleNextMonth} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white"><ChevronRight size={18} /></button>
+                    </div>
+                 )}
               </div>
            </div>
 
@@ -446,6 +549,16 @@ const EmployeeAttendance = () => {
                        <tr key={i} className="hcm-tr">
                           <td className="hcm-td px-8 py-6">
                              <p className="text-sm font-bold text-slate-900 dark:text-white">{formatDate(item.date)}</p>
+                             {item.lateMinutes > 0 && (
+                                <span className="text-[9px] text-amber-500 font-bold block mt-1">
+                                   Late: {item.lateMinutes} mins
+                                </span>
+                             )}
+                             {item.earlyExitMinutes > 0 && (
+                                <span className="text-[9px] text-rose-500 font-bold block mt-1">
+                                   Early Exit: {item.earlyExitMinutes} mins
+                                </span>
+                             )}
                           </td>
                           <td className="hcm-td px-8 py-6">
                              <div className="flex items-center gap-2.5">
@@ -464,7 +577,7 @@ const EmployeeAttendance = () => {
                                 <ArrowRight size={14} className="text-slate-200 dark:text-slate-700" />
                                 <div>
                                    <p className="text-[8px] font-black text-slate-300 dark:text-slate-500 uppercase tracking-widest mb-1.5">Punch Out</p>
-                                   <p className="text-[11px] font-black text-slate-900 dark:text-white tabular-nums">{item.clockOut}</p>
+                                   <p className="text-[11px] font-black text-slate-900 dark:text-white tabular-nums">{item.clockOut || '--:--'}</p>
                                 </div>
                              </div>
                           </td>
@@ -480,6 +593,11 @@ const EmployeeAttendance = () => {
                           </td>
                           <td className="hcm-td px-8 py-6 text-right">
                              <p className="text-sm font-black text-slate-900 dark:text-white tabular-nums">{item.totalHours}</p>
+                             {item.overtimeMinutes > 0 && (
+                                <span className="text-[9px] text-emerald-500 font-bold block mt-1">
+                                   OT: +{item.overtimeMinutes} mins
+                                </span>
+                             )}
                           </td>
                        </tr>
                     )) : (

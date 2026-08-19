@@ -30,8 +30,26 @@ export const ManagerProvider = ({ children }) => {
   const [orgEmployees, setOrgEmployees]   = useState([]);
   const [incrementRequests, setIncrementRequests] = useState([]);
 
+  const [dashboardData, setDashboardData] = useState(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+
   const showToast = (msg, type = 'success') =>
     window.dispatchEvent(new CustomEvent('app_toast', { detail: { message: msg, type } }));
+
+  // ── FETCH DASHBOARD ──
+  const fetchDashboard = useCallback(async () => {
+    try {
+      setDashboardLoading(true);
+      const res = await managerAPI.getDashboard();
+      if (res.data?.success) {
+        setDashboardData(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to load manager dashboard metrics:', err);
+    } finally {
+      setDashboardLoading(false);
+    }
+  }, []);
 
   // ── FETCH ALL ──
   const fetchTeam = useCallback(async () => {
@@ -121,7 +139,27 @@ export const ManagerProvider = ({ children }) => {
   const fetchKpis = useCallback(async () => {
     try {
       const res = await managerAPI.getTeamPerformance();
-      setKpis(res.data.data);
+      const rawGoals = res.data.data || [];
+      const mapped = rawGoals.map(k => {
+        const progress = k.progress || 0;
+        let status = k.status;
+        if (!status) {
+          if (progress === 100) status = 'Completed';
+          else if (progress < 30) status = 'At Risk';
+          else if (progress < 70) status = 'Delayed';
+          else status = 'On Track';
+        }
+        return {
+          ...k,
+          assignedTo: k.employee?.fullName || 'Employee',
+          name: k.employee?.fullName || 'Employee',
+          img: k.employee?.avatarUrl || '',
+          status,
+          category: k.category || 'Productivity',
+          deadline: k.deadline ? formatDate(k.deadline) : ''
+        };
+      });
+      setKpis(mapped);
     } catch (err) {
       console.error(err);
       setKpis([]);
@@ -218,6 +256,7 @@ export const ManagerProvider = ({ children }) => {
   }, [formatDate]);
 
   useEffect(() => {
+    fetchDashboard();
     fetchProfile();
     fetchTeam();
     fetchLeaves();
@@ -228,7 +267,7 @@ export const ManagerProvider = ({ children }) => {
     fetchDocuments();
     fetchOrgEmployees();
     fetchIncrements();
-  }, [formatDate]);
+  }, [formatDate, fetchDashboard]);
 
   // Sync with employee leave submissions
   useEffect(() => {
@@ -287,14 +326,21 @@ export const ManagerProvider = ({ children }) => {
       await managerAPI.addPerformanceGoal(kpi);
       await fetchKpis();
       showToast('KPI added!');
-    } catch {
-      setKpis(prev => [{ ...kpi, id: Date.now(), progress: 0 }, ...prev]);
-      showToast('KPI added (demo)');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to add KPI', 'error');
     }
   };
 
-  const updateKpi = (id, updates) => {
-    setKpis(prev => prev.map(k => k.id === id ? { ...k, ...updates } : k));
+  const updateKpi = async (id, updates) => {
+    try {
+      await managerAPI.updatePerformanceGoal(id, updates);
+      await fetchKpis();
+      showToast('KPI updated!');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to update KPI', 'error');
+    }
   };
 
   const addReview = async (review) => {
@@ -470,6 +516,7 @@ export const ManagerProvider = ({ children }) => {
 
   return (
     <ManagerContext.Provider value={{
+      dashboardData, dashboardLoading, fetchDashboard,
       teamMembers, addTeamMember,
       leaveRequests, leaves: leaveRequests, approveLeave, rejectLeave, updateLeaveStatus, addLeaveRequest,
       attendance, addAttendanceEntry,
@@ -482,7 +529,7 @@ export const ManagerProvider = ({ children }) => {
       incrementRequests, reviewIncrement, requestSalaryIncrement, fetchIncrements,
       loading,
       showToast,
-      refetch: { fetchTeam, fetchLeaves, fetchAttendance, fetchTasks, fetchKpis, fetchReviews, fetchProfile, fetchDocuments, fetchOrgEmployees, fetchIncrements },
+      refetch: { fetchDashboard, fetchTeam, fetchLeaves, fetchAttendance, fetchTasks, fetchKpis, fetchReviews, fetchProfile, fetchDocuments, fetchOrgEmployees, fetchIncrements },
     }}>
       {children}
     </ManagerContext.Provider>

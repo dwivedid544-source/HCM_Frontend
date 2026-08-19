@@ -21,7 +21,7 @@ import { cn } from '../../utils/cn';
 import { useSuperAdmin } from '../../context/SuperAdminContext';
 import { useTheme } from '../../hooks/ThemeContext';
 import { useCurrency } from '../../hooks/useCurrency';
-import { settingsAPI } from '../../utils/apiService';
+import { superAdminAPI, settingsAPI } from '../../utils/apiService';
 
 const SuperAdminSettings = () => {
   const superAdminContext = useSuperAdmin();
@@ -29,6 +29,7 @@ const SuperAdminSettings = () => {
   const { refreshCurrency } = useCurrency();
   const [activeTab, setActiveTab] = useState('system');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Local helper to trigger toast messages
   const showToast = (message, type = 'success') => {
@@ -71,8 +72,8 @@ const SuperAdminSettings = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await settingsAPI.getSettings();
-        const data = res.data.data;
+        const res = await superAdminAPI.getSystemSettings();
+        const data = res.data?.data || res.data;
         if (data) {
           setSettings({
             system: {
@@ -112,6 +113,7 @@ const SuperAdminSettings = () => {
   }, []);
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       const payload = {
         platformMode: settings.system.platformMode,
@@ -132,12 +134,14 @@ const SuperAdminSettings = () => {
         apiRateLimit: settings.aiConfig.apiRateLimit
       };
       
-      await settingsAPI.updateSettings(payload);
+      await superAdminAPI.updateSystemSettings(payload);
       await refreshCurrency();
       showToast('Global platform configurations saved and synchronized successfully.');
     } catch (err) {
       console.error(err);
       showToast('Failed to save settings. Please try again.', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 

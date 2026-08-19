@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, Mail, Phone, MapPin, Briefcase, ShieldCheck, Calendar, Award, FolderLock, 
   Edit2, Save, X, Building2, CheckCircle2, Star, Camera, Plus, Trash2, Download, Eye, FileText, Loader2, DollarSign, Wallet
+  Edit2, Save, X, Building2, CheckCircle2, Star, Camera, Plus, Trash2, Download, Eye, FileText, Loader2, AlertCircle
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
@@ -12,7 +13,7 @@ import PhoneInput from '../../shared/components/ui/PhoneInput';
 import DatePicker from '../../shared/components/common/DatePicker';
 
 const EmployeeProfile = () => {
-  const { profile, setProfile, documents, uploadDoc, deleteDoc, showToast } = useEmployee();
+  const { profile, setProfile, documents, uploadDoc, deleteDoc, showToast, loading, error, refetchAll } = useEmployee();
   const { formatDate } = useDateFormat();
   const [activeTab, setActiveTab] = useState('personal');
   const [isEditing, setIsEditing] = useState(false);
@@ -232,7 +233,20 @@ const EmployeeProfile = () => {
     }));
   };
 
-  if (!profile || !editData) {
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-0 min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
+        <AlertCircle className="text-rose-500 w-12 h-12" />
+        <h3 className="text-lg font-bold text-slate-950 dark:text-white">Failed to Load Profile</h3>
+        <p className="text-sm text-slate-500 max-w-md">{error}</p>
+        <button onClick={refetchAll} className="btn-primary px-6 py-2.5 font-bold flex items-center gap-2">
+          <span>Try Again</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (loading || !profile || !editData) {
     return (
       <div className="space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto px-4 sm:px-0">
         <div className="text-center py-16">

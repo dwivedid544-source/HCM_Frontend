@@ -581,7 +581,7 @@ const AttendanceCenter = () => {
 
       {/* ── 4-Card Summary Row ── */}
       {hasData ? (
-        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <SummaryCard
             icon={UserCheck} label="Present Today" value={metrics.present}
             pct={Math.round((metrics.present / totalEmp) * 100)} trend="up" trendVal="+3.2%"

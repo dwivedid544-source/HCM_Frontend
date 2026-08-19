@@ -127,7 +127,9 @@ export const employeeAPI = {
   submitResignation: (data) => API.post('/employee/resignation', data),
   getResignation: () => API.get('/employee/resignation'),
 
+  createGoal: (data) => API.post('/employee/performance/goals', data),
   updateGoalProgress: (id, progress) => API.post(`/employee/performance/goals/${id}/progress`, { progress }),
+  deleteGoal: (id) => API.delete(`/employee/performance/goals/${id}`),
   upsertSkill: (data) => API.post('/employee/performance/skills', data),
   deleteSkill: (id) => API.delete(`/employee/performance/skills/${id}`),
   resign: (data) => API.post('/employee/resign', data),
@@ -140,11 +142,13 @@ export const employeeAPI = {
 // MANAGER APIs
 // ============================================================
 export const managerAPI = {
+  getDashboard: () => API.get('/manager/dashboard'),
   getTeam: () => API.get('/manager/team'),
   addTeamMember: (data) => API.post('/manager/team', data),
   getOrgEmployees: () => API.get('/manager/org-employees'),
   getTeamAttendance: () => API.get('/manager/attendance'),
   addManualAttendance: (data) => API.post('/manager/attendance', data),
+  getAiAttendanceSummary: () => API.get('/manager/ai/attendance-insights'),
 
   getTeamLeaves: () => API.get('/manager/leaves'),
   addTeamLeaveRequest: (data) => API.post('/manager/leaves', data),
@@ -156,6 +160,7 @@ export const managerAPI = {
 
   getTeamPerformance: () => API.get('/manager/performance'),
   addPerformanceGoal: (data) => API.post('/manager/performance', data),
+  updatePerformanceGoal: (id, data) => API.patch(`/manager/performance/${id}`, data),
 
   getTeamReviews: () => API.get('/manager/reviews'),
   createTeamReview: (data) => API.post('/manager/reviews', data),
@@ -227,6 +232,10 @@ export const hrAPI = {
   getPayrollSnapshots: (params) => API.get('/hr/payroll/snapshots', { params }),
   runPayroll: (data) => API.post('/hr/payroll/run', data),
   runPayrollBatch: (data) => API.post('/hr/payroll/run-batch', data),
+  runPayrollBatch: (data) => API.post('/hr/payroll/run-batch', data),
+  finalizePayroll: (id) => API.patch(`/hr/payroll/${id}/finalize`),
+
+  getCandidateAiSummary: (data) => API.post('/hr/ai/candidate-summary', data),
 
   promoteCandidate: (id, data) => API.post(`/hr/onboarding/${id}/promote`, data),
   initiateTermination: (data) => API.post('/hr/terminate', data),
@@ -272,7 +281,7 @@ export const adminAPI = {
   generatePayslip: (data) => API.post('/admin/payslips', data),
   markPayslipPaid: (id) => API.patch(`/hr/payroll/${id}/finalize`),
 
-  getAuditLogs: () => API.get('/admin/audit-logs'),
+  getAuditLogs: (params) => API.get('/admin/audit-logs', { params }),
 
   getPolicies: () => API.get('/admin/policies'),
   createPolicy: (data) => API.post('/admin/policies', data),
@@ -404,6 +413,11 @@ export const superAdminAPI = {
   deletePricingPlan: (id) => API.delete(`/pricing/${id}`),
   togglePricingPlanStatus: (id) => API.patch(`/pricing/${id}/status`),
   reorderPricingPlans: (ids) => API.put('/pricing/reorder', { ids }),
+
+  getSystemSettings: () => API.get('/superadmin/settings'),
+  updateSystemSettings: (data) => API.put('/superadmin/settings', data),
+
+  updateOrgSubscription: (id, data) => API.put(`/superadmin/organizations/${id}/subscription`, data),
 
   // SuperAdmin AI Natural Language Analytics
   aiAnalytics: (query, filters, config) => API.post('/superadmin/ai/analytics', { query, filters }, config),
