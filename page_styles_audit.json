@@ -1,0 +1,1224 @@
+[
+  {
+    "component": "SuperAdminLayout",
+    "file": "shared/components/layout/SuperAdminLayout.jsx",
+    "h1s": [],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "h-screen w-full flex items-center justify-center bg-slate-50"
+      },
+      {
+        "tag": "div",
+        "className": "min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300"
+      }
+    ]
+  },
+  {
+    "component": "SuperAdminDashboard",
+    "file": "features/superadmin/SuperAdminDashboard.jsx",
+    "h1s": [],
+    "containers": [
+      {
+        "tag": "motion",
+        "className": "space-y-8 w-full"
+      }
+    ]
+  },
+  {
+    "component": "UserManagement",
+    "file": "features/superadmin/UserManagement.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3\"",
+        "text": "<Users className=\"text-primary-600\" size={32} /> User Management"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "p-4 sm:p-6 w-full space-y-6"
+      }
+    ]
+  },
+  {
+    "component": "DepartmentManagement",
+    "file": "features/superadmin/DepartmentManagement.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3\"",
+        "text": "<Building2 className=\"text-amber-600\" size={32} /> Department Management"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "p-6 w-full space-y-6"
+      }
+    ]
+  },
+  {
+    "component": "GlobalAnalytics",
+    "file": "features/superadmin/GlobalAnalytics.jsx",
+    "h1s": [],
+    "containers": [
+      {
+        "tag": "motion",
+        "className": "space-y-8 w-full text-left"
+      }
+    ]
+  },
+  {
+    "component": "SuperAdminPayrollCenter",
+    "file": "pages/superadmin/PayrollCenter.jsx",
+    "h1s": [],
+    "containers": [
+      {
+        "tag": "motion",
+        "className": "space-y-6 max-w-7xl mx-auto"
+      },
+      {
+        "tag": "div",
+        "className": "`bg-white dark:bg-slate-900 rounded-xl border ${k.border"
+      },
+      {
+        "tag": "g",
+        "className": "group cursor-pointer"
+      },
+      {
+        "tag": "div",
+        "className": "space-y-1"
+      }
+    ]
+  },
+  {
+    "component": "SuperAdminBenefitsConfig",
+    "file": "pages/superadmin/BenefitsConfig.jsx",
+    "h1s": [],
+    "containers": [
+      {
+        "tag": "span",
+        "className": "`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${map[status] || map.Inactive"
+      },
+      {
+        "tag": "motion",
+        "className": "`relative bg-white dark:bg-slate-900 rounded-2xl border ${borderClass"
+      },
+      {
+        "tag": "div",
+        "className": "fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+      },
+      {
+        "tag": "motion",
+        "className": "space-y-5 max-w-7xl mx-auto"
+      },
+      {
+        "tag": "motion",
+        "className": "`p-4 rounded-xl border ${cat.border"
+      }
+    ]
+  },
+  {
+    "component": "SuperAdminAttendanceCenter",
+    "file": "pages/superadmin/AttendanceCenter.jsx",
+    "h1s": [],
+    "containers": [
+      {
+        "tag": "span",
+        "className": "`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${cfg.bg"
+      },
+      {
+        "tag": "motion",
+        "className": "`relative bg-white dark:bg-slate-900 rounded-2xl border ${borderClass"
+      },
+      {
+        "tag": "div",
+        "className": "flex items-end gap-0.5 h-8"
+      },
+      {
+        "tag": "motion",
+        "className": "space-y-6 max-w-7xl mx-auto"
+      },
+      {
+        "tag": "div",
+        "className": "`p-3 rounded-xl ${shift.bg"
+      },
+      {
+        "tag": "g",
+        "className": "group cursor-pointer"
+      },
+      {
+        "tag": "circle",
+        "className": "hover:r-5 transition-all cursor-pointer"
+      },
+      {
+        "tag": "rect",
+        "className": "hover:opacity-100 transition-all cursor-pointer"
+      }
+    ]
+  },
+  {
+    "component": "BenefitsDashboard",
+    "file": "features/benefits/BenefitsDashboard.jsx",
+    "h1s": [],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "w-full space-y-8 pb-16 animate-fade-in relative text-left"
+      }
+    ]
+  },
+  {
+    "component": "TimeDashboard",
+    "file": "features/time/TimeDashboard.jsx",
+    "h1s": [],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "w-full space-y-8 pb-16 animate-fade-in relative text-left"
+      }
+    ]
+  },
+  {
+    "component": "LoginPage",
+    "file": "features/auth/LoginPage.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-5xl font-extrabold text-white leading-tight mb-6\"",
+        "text": "Empower Your <br /> <span className=\"text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-400\">Human Capital</span> <br /> with Artificial Intelligence."
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "min-h-screen grid lg:grid-cols-2 bg-white selection:bg-primary-100"
+      }
+    ]
+  },
+  {
+    "component": "AppLayout",
+    "file": "shared/components/layout/AppLayout.jsx",
+    "h1s": [],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "h-screen w-full flex items-center justify-center bg-slate-50"
+      },
+      {
+        "tag": "div",
+        "className": "min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors duration-300"
+      }
+    ]
+  },
+  {
+    "component": "LandingPage",
+    "file": "features/LandingPage.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-4xl lg:text-5xl xl:text-6xl font-black text-slate-900 tracking-tighter leading-[1.05]\"",
+        "text": "Transform Workforce <br /> <span className=\"text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600\">Management</span> with AI"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "min-h-screen bg-white text-slate-900 font-sans selection:bg-primary-100 selection:text-primary-900 scroll-smooth transition-colors duration-300"
+      }
+    ]
+  },
+  {
+    "component": "BookDemo",
+    "file": "features/BookDemo.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-6xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600 tracking-tighter leading-[0.95]\"",
+        "text": "Transform Your Workforce with <span className=\"text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600\">HCM.ai</span>"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "min-h-screen bg-white text-slate-900 font-sans selection:bg-primary-100 selection:text-primary-900 scroll-smooth transition-colors duration-300"
+      },
+      {
+        "tag": "label",
+        "className": "flex items-center gap-2.5 cursor-pointer group select-none"
+      }
+    ]
+  },
+  {
+    "component": "CandidateDashboard",
+    "file": "features/candidate/CandidateDashboard.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-bold text-slate-900 tracking-tight\"",
+        "text": "Candidate Dashboard"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto"
+      }
+    ]
+  },
+  {
+    "component": "BrowseJobs",
+    "file": "features/candidate/BrowseJobs.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-4xl font-medium text-slate-900 tracking-tight\"",
+        "text": "BROWSE JOBS"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto text-left"
+      }
+    ]
+  },
+  {
+    "component": "ApplicationForm",
+    "file": "features/candidate/ApplicationForm.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-4xl font-medium text-slate-900 tracking-tight uppercase leading-none mb-2\"",
+        "text": "ENGAGEMENT PROTOCOL"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "min-h-[80vh] flex items-center justify-center p-4 animate-fade-in"
+      },
+      {
+        "tag": "div",
+        "className": "space-y-10 pb-12 animate-fade-in max-w-7xl mx-auto text-left"
+      }
+    ]
+  },
+  {
+    "component": "MyApplications",
+    "file": "features/candidate/MyApplications.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-4xl font-bold text-slate-900\"",
+        "text": "My Applications"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto text-left"
+      },
+      {
+        "tag": "div",
+        "className": "relative"
+      }
+    ]
+  },
+  {
+    "component": "ResumeBuilder",
+    "file": "features/candidate/ResumeBuilder.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-4xl font-bold text-slate-900 mb-2\"",
+        "text": "Resume Builder"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in max-w-7xl mx-auto flex flex-col min-h-screen lg:min-h-0"
+      }
+    ]
+  },
+  {
+    "component": "AIResumeScore",
+    "file": "features/candidate/AIResumeScore.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-5xl font-bold text-slate-900 tracking-tight\"",
+        "text": "AI Resume Score"
+      },
+      {
+        "attrs": " className=\"text-4xl font-bold text-slate-900 tracking-tight mb-2\"",
+        "text": "Resume Analysis Results"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 animate-fade-in max-w-5xl mx-auto text-left"
+      },
+      {
+        "tag": "div",
+        "className": "min-h-[70vh] flex flex-col items-center justify-center space-y-12 animate-fade-in"
+      },
+      {
+        "tag": "div",
+        "className": "space-y-10 pb-12 animate-fade-in max-w-7xl mx-auto text-left"
+      }
+    ]
+  },
+  {
+    "component": "InterviewSchedule",
+    "file": "features/candidate/InterviewSchedule.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-4xl font-medium text-slate-900 tracking-tight uppercase leading-none mb-2\"",
+        "text": "UPCOMING INTERVIEWS"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-10 pb-12 animate-fade-in max-w-7xl mx-auto text-left"
+      }
+    ]
+  },
+  {
+    "component": "Notifications",
+    "file": "features/candidate/Notifications.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-4xl font-bold text-slate-900 leading-none mb-2\"",
+        "text": "SIGNAL QUEUE"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-10 pb-12 animate-fade-in max-w-5xl mx-auto text-left"
+      },
+      {
+        "tag": "motion",
+        "className": "cn(\n "
+      }
+    ]
+  },
+  {
+    "component": "CandidateProfile",
+    "file": "features/candidate/CandidateProfile.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-bold text-slate-900 tracking-tight leading-none mb-2\"",
+        "text": "{formData.fullName}"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-10 pb-12 animate-fade-in max-w-7xl mx-auto text-left"
+      }
+    ]
+  },
+  {
+    "component": "CandidateSettings",
+    "file": "features/candidate/CandidateSettings.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-4xl font-medium text-slate-900 tracking-tight uppercase leading-none mb-2\"",
+        "text": "SETTINGS"
+      },
+      {
+        "attrs": " className=\"text-4xl font-bold text-slate-900 tracking-tight mb-2\"",
+        "text": "SETTINGS"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-10 pb-12 animate-fade-in max-w-7xl mx-auto text-left"
+      }
+    ]
+  },
+  {
+    "component": "HRDashboard",
+    "file": "features/hr/HRDashboard.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "HR Dashboard"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in flex flex-col min-h-screen lg:min-h-0 lg:h-auto overflow-hidden"
+      }
+    ]
+  },
+  {
+    "component": "JobPosts",
+    "file": "features/hr/JobPosts.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Job Posts"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative"
+      }
+    ]
+  },
+  {
+    "component": "Candidates",
+    "file": "features/hr/Candidates.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Candidates"
+      },
+      {
+        "attrs": " className=\"text-4xl font-black text-slate-900 mb-2\"",
+        "text": "{previewingResume.name}"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative"
+      },
+      {
+        "tag": "div",
+        "className": "flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-2xl text-xs font-bold text-slate-700 shadow-sm"
+      }
+    ]
+  },
+  {
+    "component": "InterviewManagement",
+    "file": "features/hr/InterviewManagement.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Interview Scheduling"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative"
+      }
+    ]
+  },
+  {
+    "component": "HiringPipeline",
+    "file": "features/hr/HiringPipeline.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Hiring Pipeline"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in h-[calc(100vh-140px)] flex flex-col"
+      },
+      {
+        "tag": "div",
+        "className": "w-80 flex flex-col gap-4 h-full"
+      },
+      {
+        "tag": "div",
+        "className": "w-5 h-5 rounded-full ring-2 ring-white bg-slate-200 flex items-center justify-center text-[8px] font-black text-slate-700 uppercase overflow-hidden"
+      },
+      {
+        "tag": "div",
+        "className": "flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-2xl text-xs font-bold text-slate-700 shadow-sm"
+      }
+    ]
+  },
+  {
+    "component": "OfferManagement",
+    "file": "features/hr/OfferManagement.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Offer Management"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative"
+      }
+    ]
+  },
+  {
+    "component": "Onboarding",
+    "file": "features/hr/Onboarding.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Onboarding"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative"
+      },
+      {
+        "tag": "div",
+        "className": "flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white hover:shadow-md transition-all"
+      }
+    ]
+  },
+  {
+    "component": "HRReports",
+    "file": "features/hr/Reports.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Reports & Analytics"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative"
+      }
+    ]
+  },
+  {
+    "component": "Messages",
+    "file": "features/hr/Messages.jsx",
+    "h1s": [],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "flex flex-col h-[calc(100vh-120px)] animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "HRProfile",
+    "file": "features/hr/HRProfile.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "HR Profile"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none max-w-7xl mx-auto"
+      }
+    ]
+  },
+  {
+    "component": "HRSettings",
+    "file": "features/hr/HRSettings.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Profile Settings"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none h-full"
+      }
+    ]
+  },
+  {
+    "component": "EmployeeDashboard",
+    "file": "features/employee/EmployeeDashboard.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Welcome Back, {profile.fullName.split(' ')[0]}!"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "EmployeeProfile",
+    "file": "features/employee/EmployeeProfile.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "My Profile"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto"
+      }
+    ]
+  },
+  {
+    "component": "EmployeeAttendance",
+    "file": "features/employee/EmployeeAttendance.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Time & Attendance"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto"
+      }
+    ]
+  },
+  {
+    "component": "EmployeeLeave",
+    "file": "features/employee/EmployeeLeave.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Time Off Management"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto"
+      }
+    ]
+  },
+  {
+    "component": "EmployeePayroll",
+    "file": "features/employee/EmployeePayroll.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Financial Hub"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto"
+      }
+    ]
+  },
+  {
+    "component": "EmployeeBenefits",
+    "file": "features/employee/EmployeeBenefits.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Benefits & Wellness"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto"
+      }
+    ]
+  },
+  {
+    "component": "EmployeeDocuments",
+    "file": "features/employee/EmployeeDocuments.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Records & Vault"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto"
+      }
+    ]
+  },
+  {
+    "component": "EmployeePerformance",
+    "file": "features/employee/EmployeePerformance.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Strategy & Performance"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto text-left"
+      }
+    ]
+  },
+  {
+    "component": "EmployeeHelpDesk",
+    "file": "features/employee/EmployeeHelpDesk.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Support Ecosystem"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative max-w-7xl mx-auto text-left"
+      }
+    ]
+  },
+  {
+    "component": "EmployeeSettings",
+    "file": "features/employee/EmployeeSettings.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Employee Settings"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "ManagerDashboard",
+    "file": "features/manager/ManagerDashboard.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Manager Dashboard"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "TeamMembers",
+    "file": "features/manager/TeamMembers.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Team Members"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative"
+      }
+    ]
+  },
+  {
+    "component": "AttendanceReview",
+    "file": "features/manager/AttendanceReview.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Attendance Review"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative"
+      }
+    ]
+  },
+  {
+    "component": "LeaveApproval",
+    "file": "features/manager/LeaveApproval.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Leave Approval"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative"
+      }
+    ]
+  },
+  {
+    "component": "KPITracking",
+    "file": "features/manager/KPITracking.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "KPI Tracking & Goals"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative"
+      }
+    ]
+  },
+  {
+    "component": "Tasks",
+    "file": "features/manager/Tasks.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Team Task Management"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative text-left"
+      }
+    ]
+  },
+  {
+    "component": "Reviews",
+    "file": "features/manager/Reviews.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Performance Reviews"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative text-left"
+      },
+      {
+        "tag": "tr",
+        "className": "group hover:bg-slate-50/30 transition-colors cursor-pointer"
+      }
+    ]
+  },
+  {
+    "component": "ManagerReports",
+    "file": "features/manager/Reports.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Team Insights & Reports"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none text-left"
+      }
+    ]
+  },
+  {
+    "component": "ManagerProfile",
+    "file": "features/manager/ManagerProfile.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "Manager Profile"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none max-w-7xl mx-auto"
+      }
+    ]
+  },
+  {
+    "component": "ManagerSettings",
+    "file": "features/manager/ManagerSettings.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Manager Settings"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none h-full"
+      }
+    ]
+  },
+  {
+    "component": "AdminDashboard",
+    "file": "features/admin/AdminDashboard.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Admin Dashboard"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "OrgSetup",
+    "file": "features/admin/OrgSetup.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight\"",
+        "text": "Organization Setup"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative text-left"
+      }
+    ]
+  },
+  {
+    "component": "Departments",
+    "file": "features/admin/Departments.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Departments"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "Users",
+    "file": "features/admin/Users.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "User Management"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-32 animate-fade-in focus:outline-none text-left"
+      }
+    ]
+  },
+  {
+    "component": "RolesPermissions",
+    "file": "features/admin/RolesPermissions.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight\"",
+        "text": "Roles & Permissions"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative focus:outline-none text-left"
+      },
+      {
+        "tag": "td",
+        "className": "px-4 py-6 text-center"
+      }
+    ]
+  },
+  {
+    "component": "PayrollCenter",
+    "file": "features/admin/PayrollCenter.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight text-shadow-sm\"",
+        "text": "Payroll Center"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in relative focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "Holidays",
+    "file": "features/admin/Holidays.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Holiday Management"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "BenefitsConfig",
+    "file": "features/admin/BenefitsConfig.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Benefits Configuration"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "AICenter",
+    "file": "features/admin/AICenter.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "AI Center"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      },
+      {
+        "tag": "motion",
+        "className": "card p-6 bg-white border border-slate-100 shadow-soft group flex flex-col h-full"
+      }
+    ]
+  },
+  {
+    "component": "ComplianceCenter",
+    "file": "features/admin/ComplianceCenter.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Compliance Center"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "Integrations",
+    "file": "features/admin/Integrations.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "System Integrations"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      },
+      {
+        "tag": "motion",
+        "className": "card p-6 bg-white dark:bg-slate-900 border border-slate-50 dark:border-slate-800 shadow-soft group flex flex-col min-h-[300px] h-auto"
+      }
+    ]
+  },
+  {
+    "component": "Billing",
+    "file": "features/admin/Billing.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Billing & Subscriptions"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "AuditLogs",
+    "file": "features/admin/AuditLogs.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "System Audit Logs"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "AdminReports",
+    "file": "features/admin/AdminReports.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "Organization Reports"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none"
+      }
+    ]
+  },
+  {
+    "component": "Settings",
+    "file": "features/admin/Settings.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-extrabold text-slate-900 tracking-tight\"",
+        "text": "System Settings"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none h-full"
+      }
+    ]
+  },
+  {
+    "component": "AdminProfile",
+    "file": "features/admin/AdminProfile.jsx",
+    "h1s": [
+      {
+        "attrs": " className=\"text-3xl font-black text-slate-900 tracking-tight\"",
+        "text": "My Profile"
+      }
+    ],
+    "containers": [
+      {
+        "tag": "div",
+        "className": "space-y-8 pb-12 animate-fade-in focus:outline-none max-w-7xl mx-auto"
+      }
+    ]
+  }
+]

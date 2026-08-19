@@ -1,0 +1,210 @@
+=== HEADINGS LACKING DARK:TEXT- ===
+File: features/LandingPage.jsx | Component: LandingPage
+Heading: <h1 className="text-4xl lg:text-5xl xl:text-6xl font-black text-slate-900 tracking-tighter leading-[1.05]">Transform Workforce <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600">Management</span> with AI</h1>
+
+File: features/BookDemo.jsx | Component: BookDemo
+Heading: <h1 className="text-6xl lg:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600 tracking-tighter leading-[0.95]">Transform Your Workforce with <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-600 to-indigo-600">HCM.ai</span></h1>
+
+File: features/candidate/CandidateDashboard.jsx | Component: CandidateDashboard
+Heading: <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Candidate Dashboard</h1>
+
+File: features/candidate/BrowseJobs.jsx | Component: BrowseJobs
+Heading: <h1 className="text-4xl font-medium text-slate-900 tracking-tight">BROWSE JOBS</h1>
+
+File: features/candidate/ApplicationForm.jsx | Component: ApplicationForm
+Heading: <h1 className="text-4xl font-medium text-slate-900 tracking-tight uppercase leading-none mb-2">ENGAGEMENT PROTOCOL</h1>
+
+File: features/candidate/MyApplications.jsx | Component: MyApplications
+Heading: <h1 className="text-4xl font-bold text-slate-900">My Applications</h1>
+
+File: features/candidate/ResumeBuilder.jsx | Component: ResumeBuilder
+Heading: <h1 className="text-4xl font-bold text-slate-900 mb-2">Resume Builder</h1>
+
+File: features/candidate/AIResumeScore.jsx | Component: AIResumeScore
+Heading: <h1 className="text-5xl font-bold text-slate-900 tracking-tight">AI Resume Score</h1>
+
+File: features/candidate/AIResumeScore.jsx | Component: AIResumeScore
+Heading: <h1 className="text-4xl font-bold text-slate-900 tracking-tight mb-2">Resume Analysis Results</h1>
+
+File: features/candidate/InterviewSchedule.jsx | Component: InterviewSchedule
+Heading: <h1 className="text-4xl font-medium text-slate-900 tracking-tight uppercase leading-none mb-2">UPCOMING INTERVIEWS</h1>
+
+File: features/candidate/Notifications.jsx | Component: Notifications
+Heading: <h1 className="text-4xl font-bold text-slate-900 leading-none mb-2">SIGNAL QUEUE</h1>
+
+File: features/candidate/CandidateProfile.jsx | Component: CandidateProfile
+Heading: <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-none mb-2">{formData.fullName}</h1>
+
+File: features/candidate/CandidateSettings.jsx | Component: CandidateSettings
+Heading: <h1 className="text-4xl font-medium text-slate-900 tracking-tight uppercase leading-none mb-2">SETTINGS</h1>
+
+File: features/candidate/CandidateSettings.jsx | Component: CandidateSettings
+Heading: <h1 className="text-4xl font-bold text-slate-900 tracking-tight mb-2">SETTINGS</h1>
+
+File: features/hr/HRDashboard.jsx | Component: HRDashboard
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">HR Dashboard</h1>
+
+File: features/hr/JobPosts.jsx | Component: JobPosts
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Job Posts</h1>
+
+File: features/hr/Candidates.jsx | Component: Candidates
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Candidates</h1>
+
+File: features/hr/Candidates.jsx | Component: Candidates
+Heading: <h1 className="text-4xl font-black text-slate-900 mb-2">{previewingResume.name}</h1>
+
+File: features/hr/InterviewManagement.jsx | Component: InterviewManagement
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Interview Scheduling</h1>
+
+File: features/hr/HiringPipeline.jsx | Component: HiringPipeline
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Hiring Pipeline</h1>
+
+File: features/hr/OfferManagement.jsx | Component: OfferManagement
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Offer Management</h1>
+
+File: features/hr/Onboarding.jsx | Component: Onboarding
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Onboarding</h1>
+
+File: features/hr/Reports.jsx | Component: HRReports
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Reports & Analytics</h1>
+
+File: features/hr/HRProfile.jsx | Component: HRProfile
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">HR Profile</h1>
+
+File: features/hr/HRSettings.jsx | Component: HRSettings
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Profile Settings</h1>
+
+File: features/employee/EmployeeDashboard.jsx | Component: EmployeeDashboard
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Welcome Back, {profile.fullName.split(' ')[0]}!</h1>
+
+File: features/employee/EmployeeProfile.jsx | Component: EmployeeProfile
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">My Profile</h1>
+
+File: features/employee/EmployeeAttendance.jsx | Component: EmployeeAttendance
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Time & Attendance</h1>
+
+File: features/employee/EmployeeLeave.jsx | Component: EmployeeLeave
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Time Off Management</h1>
+
+File: features/employee/EmployeePayroll.jsx | Component: EmployeePayroll
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Financial Hub</h1>
+
+File: features/employee/EmployeeBenefits.jsx | Component: EmployeeBenefits
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Benefits & Wellness</h1>
+
+File: features/employee/EmployeeDocuments.jsx | Component: EmployeeDocuments
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Records & Vault</h1>
+
+File: features/employee/EmployeePerformance.jsx | Component: EmployeePerformance
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Strategy & Performance</h1>
+
+File: features/employee/EmployeeHelpDesk.jsx | Component: EmployeeHelpDesk
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Support Ecosystem</h1>
+
+File: features/employee/EmployeeSettings.jsx | Component: EmployeeSettings
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Employee Settings</h1>
+
+File: features/manager/ManagerDashboard.jsx | Component: ManagerDashboard
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Manager Dashboard</h1>
+
+File: features/manager/TeamMembers.jsx | Component: TeamMembers
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Team Members</h1>
+
+File: features/manager/AttendanceReview.jsx | Component: AttendanceReview
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Attendance Review</h1>
+
+File: features/manager/LeaveApproval.jsx | Component: LeaveApproval
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Leave Approval</h1>
+
+File: features/manager/KPITracking.jsx | Component: KPITracking
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">KPI Tracking & Goals</h1>
+
+File: features/manager/Tasks.jsx | Component: Tasks
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Team Task Management</h1>
+
+File: features/manager/Reviews.jsx | Component: Reviews
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Performance Reviews</h1>
+
+File: features/manager/Reports.jsx | Component: ManagerReports
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Team Insights & Reports</h1>
+
+File: features/manager/ManagerProfile.jsx | Component: ManagerProfile
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">Manager Profile</h1>
+
+File: features/manager/ManagerSettings.jsx | Component: ManagerSettings
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Manager Settings</h1>
+
+File: features/admin/AdminDashboard.jsx | Component: AdminDashboard
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Admin Dashboard</h1>
+
+File: features/admin/Departments.jsx | Component: Departments
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Departments</h1>
+
+File: features/admin/Users.jsx | Component: Users
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">User Management</h1>
+
+File: features/admin/PayrollCenter.jsx | Component: PayrollCenter
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight text-shadow-sm">Payroll Center</h1>
+
+File: features/admin/Holidays.jsx | Component: Holidays
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Holiday Management</h1>
+
+File: features/admin/BenefitsConfig.jsx | Component: BenefitsConfig
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Benefits Configuration</h1>
+
+File: features/admin/AICenter.jsx | Component: AICenter
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">AI Center</h1>
+
+File: features/admin/ComplianceCenter.jsx | Component: ComplianceCenter
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Compliance Center</h1>
+
+File: features/admin/Integrations.jsx | Component: Integrations
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">System Integrations</h1>
+
+File: features/admin/Billing.jsx | Component: Billing
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Billing & Subscriptions</h1>
+
+File: features/admin/AuditLogs.jsx | Component: AuditLogs
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">System Audit Logs</h1>
+
+File: features/admin/AdminReports.jsx | Component: AdminReports
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Organization Reports</h1>
+
+File: features/admin/Settings.jsx | Component: Settings
+Heading: <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">System Settings</h1>
+
+File: features/admin/AdminProfile.jsx | Component: AdminProfile
+Heading: <h1 className="text-3xl font-black text-slate-900 tracking-tight">My Profile</h1>
+
+
+=== CONTAINERS LACKING DARK:BG- ===
+File: shared/components/layout/SuperAdminLayout.jsx | Component: SuperAdminLayout
+Container: <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+
+File: features/auth/LoginPage.jsx | Component: LoginPage
+Container: <div className="min-h-screen grid lg:grid-cols-2 bg-white selection:bg-primary-100">
+
+File: shared/components/layout/AppLayout.jsx | Component: AppLayout
+Container: <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+
+File: features/LandingPage.jsx | Component: LandingPage
+Container: <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-primary-100 selection:text-primary-900 scroll-smooth transition-colors duration-300">
+
+File: features/BookDemo.jsx | Component: BookDemo
+Container: <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-primary-100 selection:text-primary-900 scroll-smooth transition-colors duration-300">
+
+File: features/hr/Candidates.jsx | Component: Candidates
+Container: <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-2xl text-xs font-bold text-slate-700 shadow-sm">
+
+File: features/hr/HiringPipeline.jsx | Component: HiringPipeline
+Container: <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-2xl text-xs font-bold text-slate-700 shadow-sm">
+
+File: features/hr/Onboarding.jsx | Component: Onboarding
+Container: <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white hover:shadow-md transition-all">
+
+File: features/manager/Reviews.jsx | Component: Reviews
+Container: <tr className="group hover:bg-slate-50/30 transition-colors cursor-pointer">
+
+File: features/admin/AICenter.jsx | Component: AICenter
+Container: <motion className="card p-6 bg-white border border-slate-100 shadow-soft group flex flex-col h-full">
+
