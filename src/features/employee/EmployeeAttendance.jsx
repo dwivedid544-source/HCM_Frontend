@@ -485,53 +485,53 @@ const EmployeeAttendance = () => {
         {/* History Area */}
         <div className="lg:col-span-8 space-y-8">
            
-           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight italic">Attendance History</h3>
-              <div className="flex flex-wrap items-center gap-3">
-                 <div className="relative">
-                    <Search className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" size={16} />
-                    <input 
-                      type="text" 
-                      placeholder="Search history..." 
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="input-field pl-10 pr-4 py-2 text-xs font-bold w-40" 
-                    />
-                 </div>
-                 <div className="flex items-center gap-2">
-                    <input 
-                      type="date" 
-                      value={startDateFilter}
-                      onChange={(e) => setStartDateFilter(e.target.value)}
-                      className="input-field py-1.5 px-3 text-[10px] font-bold w-32 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
-                      placeholder="Start Date"
-                    />
-                    <span className="text-[10px] text-slate-400 font-bold">to</span>
-                    <input 
-                      type="date" 
-                      value={endDateFilter}
-                      onChange={(e) => setEndDateFilter(e.target.value)}
-                      className="input-field py-1.5 px-3 text-[10px] font-bold w-32 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
-                      placeholder="End Date"
-                    />
-                    {(startDateFilter || endDateFilter) && (
-                       <button 
-                         onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}
-                         className="p-1 px-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors text-[9px] font-black uppercase tracking-wider border border-rose-200/50"
-                       >
-                         Clear
-                       </button>
-                    )}
-                 </div>
-                 {!startDateFilter && !endDateFilter && (
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-                       <button onClick={handlePrevMonth} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white"><ChevronLeft size={18} /></button>
-                       <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 font-bold px-4">{currentMonthYearStr}</span>
-                       <button onClick={handleNextMonth} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white"><ChevronRight size={18} /></button>
-                    </div>
-                 )}
-              </div>
-           </div>
+           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+               <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight italic">Attendance History</h3>
+               <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative">
+                     <Search className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" size={16} />
+                     <input 
+                       type="text" 
+                       placeholder="Search history..." 
+                       value={searchTerm}
+                       onChange={(e) => setSearchTerm(e.target.value)}
+                       className="input-field pl-10 pr-4 py-2 text-xs font-bold w-40 focus:outline-none focus:ring-2 focus:ring-primary-500" 
+                     />
+                  </div>
+                  <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                     <input 
+                       type="date" 
+                       value={startDateFilter}
+                       onChange={(e) => setStartDateFilter(e.target.value)}
+                       className="bg-transparent border-0 p-0 text-[10px] font-bold w-28 focus:outline-none dark:text-slate-200"
+                       placeholder="Start Date"
+                     />
+                     <span className="text-[10px] text-slate-400 font-bold">to</span>
+                     <input 
+                       type="date" 
+                       value={endDateFilter}
+                       onChange={(e) => setEndDateFilter(e.target.value)}
+                       className="bg-transparent border-0 p-0 text-[10px] font-bold w-28 focus:outline-none dark:text-slate-200"
+                       placeholder="End Date"
+                     />
+                     {(startDateFilter || endDateFilter) && (
+                        <button 
+                          onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}
+                          className="p-1 px-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors text-[9px] font-black uppercase tracking-wider focus:outline-none"
+                        >
+                          Clear
+                        </button>
+                     )}
+                  </div>
+                  {!startDateFilter && !endDateFilter && (
+                     <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
+                        <button onClick={handlePrevMonth} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"><ChevronLeft size={18} /></button>
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 px-3 min-w-[80px] text-center select-none">{currentMonthYearStr}</span>
+                        <button onClick={handleNextMonth} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"><ChevronRight size={18} /></button>
+                     </div>
+                  )}
+               </div>
+            </div>
 
            <div className="hcm-table-container">
               <table className="hcm-table">
