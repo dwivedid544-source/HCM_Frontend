@@ -7,6 +7,7 @@ import {
   X, Eye, Mail, Phone, Calendar, ArrowRight, 
   Briefcase, Star, MapPin, ExternalLink, Trash2,
   Sparkles, Upload, Users, User, Edit3, ShieldCheck, AlertCircle, Loader2
+  //Sparkles, Upload, Users, User, Edit3, ShieldCheck, AlertCircle
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useHR } from '../../context/HRContext';

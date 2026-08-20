@@ -258,6 +258,8 @@ export const EmployeeProvider = ({ children }) => {
     }
   }, []);
 
+  const [documents, setDocuments] = useState([]);
+
   const fetchDocuments = useCallback(async () => {
     try {
       const res = await employeeAPI.getDocuments();
