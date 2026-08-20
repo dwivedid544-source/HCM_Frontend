@@ -10,12 +10,13 @@ import { cn } from '../../utils/cn';
 import { useCandidate } from '../../context/CandidateContext';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import { useDateFormat } from '../../hooks/useDateFormat';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const CandidateProfile = () => {
   const { profile, updateProfile, showToast } = useCandidate();
   const { formatDate } = useDateFormat();
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = usePersistedTab('cand_profile', 'personal');
   const [formData, setFormData] = useState(profile);
   const fileInputRef = useRef(null);
 

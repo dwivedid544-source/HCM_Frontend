@@ -23,13 +23,14 @@ import { useHR } from '../../context/HRContext';
 import { useAuth } from '../../hooks/useAuth';
 import { useCurrency } from '../../hooks/useCurrency';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const HRSettings = () => {
   const { formatCurrency, getSymbol, getIcon, masterCurrency } = useCurrency();
 
   const { showToast } = useHR();
   const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = usePersistedTab('hr_settings', 'general');
 
   const [settings, setSettings] = useState({
     general: {

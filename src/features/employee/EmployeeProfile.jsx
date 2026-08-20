@@ -10,11 +10,12 @@ import { useDateFormat } from '../../hooks/useDateFormat';
 import { uploadAPI } from '../../utils/apiService';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import DatePicker from '../../shared/components/common/DatePicker';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const EmployeeProfile = () => {
   const { profile, setProfile, documents, uploadDoc, deleteDoc, showToast, loading, error, refetchAll } = useEmployee();
   const { formatDate } = useDateFormat();
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = usePersistedTab('emp_profile', 'personal');
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editData, setEditData] = useState(profile);
@@ -44,28 +45,48 @@ const EmployeeProfile = () => {
     }
   };
 
-  const handleAddDocSubmit = (e) => {
-    e.preventDefault();
+  const handleAddDocSubmit = async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!newDocName || !newDocContent) {
       showToast('Please provide a name and upload a file', 'error');
       return;
     }
-    uploadDoc({
-      name: newDocName,
-      category: newDocCategory,
-      size: newDocSize || '1.0 KB',
-      date: new Date().toISOString().split('T')[0],
-      content: newDocContent
-    });
-    showToast('Document uploaded successfully');
-    setNewDocName('');
-    setNewDocCategory('ID Proof');
-    setNewDocContent('');
-    setNewDocSize('');
-    setIsAddDocOpen(false);
+    try {
+      await uploadDoc({
+        name: newDocName,
+        category: newDocCategory,
+        size: newDocSize || '1.0 KB',
+        date: new Date().toISOString().split('T')[0],
+        content: newDocContent,
+        fileBase64: newDocContent
+      });
+      setNewDocName('');
+      setNewDocCategory('ID Proof');
+      setNewDocContent('');
+      setNewDocSize('');
+      setIsAddDocOpen(false);
+      setActiveTab('documents');
+    } catch (err) {
+      console.error('Error uploading document:', err);
+    }
   };
 
   const handleDownload = (doc) => {
+    if (!doc) return;
+    if (doc.url && (doc.url.startsWith('http://') || doc.url.startsWith('https://'))) {
+      const link = document.createElement("a");
+      link.href = doc.url;
+      link.download = doc.name || 'document';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Download started');
+      return;
+    }
     const element = document.createElement("a");
     let file;
     if (doc.content && doc.content.startsWith('data:')) {
@@ -82,7 +103,7 @@ const EmployeeProfile = () => {
       file = new Blob([doc.content || ""], { type: 'text/plain' });
     }
     element.href = URL.createObjectURL(file);
-    element.download = doc.name;
+    element.download = doc.name || 'document.pdf';
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);

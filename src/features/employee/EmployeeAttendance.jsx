@@ -22,7 +22,9 @@ import {
   Search,
   Filter,
   Users,
-  Zap
+  Zap,
+  X,
+  RotateCcw
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
@@ -35,6 +37,7 @@ const EmployeeAttendance = () => {
   const { formatDate } = useDateFormat();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [mode, setMode] = useState('Office');
   const [workedSeconds, setWorkedSeconds] = useState(0);
   const [isOnBreak, setIsOnBreak] = useState(false);
@@ -202,9 +205,13 @@ const EmployeeAttendance = () => {
 
   const filteredHistory = (attendance.history || []).filter(item => {
     if (!item) return false;
-    const matchesSearch = (item.status || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (item.mode || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = !searchTerm || 
+                          (item.status || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (item.mode || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (item.date || '').toLowerCase().includes(searchTerm.toLowerCase());
                           
+    const matchesStatus = statusFilter === 'All' || !statusFilter || item.status === statusFilter;
+
     const itemDate = new Date(item.rawDate || item.date);
     itemDate.setHours(0, 0, 0, 0);
 
@@ -225,7 +232,7 @@ const EmployeeAttendance = () => {
       itemDate.getFullYear() === currentDate.getFullYear()
     );
                          
-    return matchesSearch && matchesMonth && matchesDateRange;
+    return matchesSearch && matchesStatus && matchesMonth && matchesDateRange;
   });
 
   const totalPresentDays = filteredHistory.reduce((total, h) => {
@@ -483,55 +490,174 @@ const EmployeeAttendance = () => {
         </div>
 
         {/* History Area */}
-        <div className="lg:col-span-8 space-y-8">
+        <div className="lg:col-span-8 space-y-6">
            
-           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-               <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight italic">Attendance History</h3>
-               <div className="flex flex-wrap items-center gap-3">
-                  <div className="relative">
-                     <Search className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" size={16} />
-                     <input 
-                       type="text" 
-                       placeholder="Search history..." 
-                       value={searchTerm}
-                       onChange={(e) => setSearchTerm(e.target.value)}
-                       className="input-field pl-10 pr-4 py-2 text-xs font-bold w-40 focus:outline-none focus:ring-2 focus:ring-primary-500" 
-                     />
-                  </div>
-                  <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                     <input 
-                       type="date" 
-                       value={startDateFilter}
-                       onChange={(e) => setStartDateFilter(e.target.value)}
-                       className="bg-transparent border-0 p-0 text-[10px] font-bold w-28 focus:outline-none dark:text-slate-200"
-                       placeholder="Start Date"
-                     />
-                     <span className="text-[10px] text-slate-400 font-bold">to</span>
-                     <input 
-                       type="date" 
-                       value={endDateFilter}
-                       onChange={(e) => setEndDateFilter(e.target.value)}
-                       className="bg-transparent border-0 p-0 text-[10px] font-bold w-28 focus:outline-none dark:text-slate-200"
-                       placeholder="End Date"
-                     />
-                     {(startDateFilter || endDateFilter) && (
-                        <button 
-                          onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}
-                          className="p-1 px-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors text-[9px] font-black uppercase tracking-wider focus:outline-none"
-                        >
-                          Clear
-                        </button>
-                     )}
-                  </div>
-                  {!startDateFilter && !endDateFilter && (
-                     <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-                        <button onClick={handlePrevMonth} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"><ChevronLeft size={18} /></button>
-                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 px-3 min-w-[80px] text-center select-none">{currentMonthYearStr}</span>
-                        <button onClick={handleNextMonth} className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"><ChevronRight size={18} /></button>
-                     </div>
-                  )}
-               </div>
-            </div>
+           {/* Enhanced Card Header & Toolbar */}
+           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm space-y-5">
+              
+              {/* Row 1: Header Title + Month Navigation & Calendar Expand */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                 <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs border border-indigo-100/50 dark:border-indigo-900/30 shrink-0">
+                       <Clock size={22} />
+                    </div>
+                    <div>
+                       <div className="flex items-center gap-2.5 flex-wrap">
+                          <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Attendance History</h3>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+                             {filteredHistory.length} {filteredHistory.length === 1 ? 'log' : 'logs'}
+                          </span>
+                       </div>
+                       <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">
+                          {startDateFilter || endDateFilter 
+                            ? `Custom range: ${startDateFilter || 'Earliest'} → ${endDateFilter || 'Latest'}`
+                            : `Filtered records for ${currentMonthYearStr}`
+                          }
+                       </p>
+                    </div>
+                 </div>
+
+                 <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                    {/* Month Navigator Stepper */}
+                    <div className="inline-flex items-center bg-slate-50 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+                       <button 
+                         onClick={handlePrevMonth} 
+                         className="p-1.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-all active:scale-95"
+                         title="Previous Month"
+                       >
+                          <ChevronLeft size={16} />
+                       </button>
+                       <span className="text-xs font-bold text-slate-700 dark:text-slate-200 px-3 min-w-[105px] text-center select-none">
+                          {currentMonthYearStr}
+                       </span>
+                       <button 
+                         onClick={handleNextMonth} 
+                         className="p-1.5 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 rounded-xl transition-all active:scale-95"
+                         title="Next Month"
+                       >
+                          <ChevronRight size={16} />
+                       </button>
+                    </div>
+
+                    {/* Quick Expand Calendar Button */}
+                    <button 
+                      onClick={() => setIsCalendarModalOpen(true)}
+                      className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-2xl border border-indigo-100/60 dark:border-indigo-900/30 transition-all flex items-center gap-1.5 shadow-xs shrink-0"
+                      title="View Full Attendance Calendar"
+                    >
+                       <CalendarDays size={15} />
+                       <span className="hidden sm:inline">Calendar</span>
+                    </button>
+                 </div>
+              </div>
+
+              {/* Row 2: Search, Date Filter Range, Status Dropdown */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 items-center">
+                 
+                 {/* Search Input */}
+                 <div className="md:col-span-4 relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={15} />
+                    <input 
+                      type="text" 
+                      placeholder="Search status, mode..." 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl pl-10 pr-8 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all" 
+                    />
+                    {searchTerm && (
+                       <button 
+                         onClick={() => setSearchTerm('')}
+                         className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                       >
+                          <X size={13} />
+                       </button>
+                    )}
+                 </div>
+
+                 {/* Date Range Controls */}
+                 <div className="md:col-span-5 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 p-1.5 px-3 rounded-2xl border border-slate-200/80 dark:border-slate-700/80">
+                    <Calendar size={14} className="text-slate-400 dark:text-slate-500 shrink-0" />
+                    <input 
+                      type="date" 
+                      value={startDateFilter}
+                      onChange={(e) => setStartDateFilter(e.target.value)}
+                      className="bg-transparent border-0 p-0 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none w-full min-w-0"
+                      title="From Date"
+                    />
+                    <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 px-1 shrink-0">to</span>
+                    <input 
+                      type="date" 
+                      value={endDateFilter}
+                      onChange={(e) => setEndDateFilter(e.target.value)}
+                      className="bg-transparent border-0 p-0 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none w-full min-w-0"
+                      title="To Date"
+                    />
+                    {(startDateFilter || endDateFilter) && (
+                       <button 
+                         onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }}
+                         className="p-1 px-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors text-[10px] font-black uppercase tracking-wider shrink-0"
+                         title="Reset Date Range"
+                       >
+                         Reset
+                       </button>
+                    )}
+                 </div>
+
+                 {/* Status Filter Dropdown */}
+                 <div className="md:col-span-3">
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl px-3 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all cursor-pointer"
+                    >
+                       <option value="All">All Statuses</option>
+                       <option value="Present">Present Only</option>
+                       <option value="Late">Late Incidents</option>
+                       <option value="Leave">On Leave</option>
+                    </select>
+                 </div>
+
+              </div>
+
+              {/* Active Filter Badges (if any active) */}
+              {(searchTerm || startDateFilter || endDateFilter || statusFilter !== 'All') && (
+                 <div className="flex items-center justify-between pt-2 border-t border-slate-100/60 dark:border-slate-800/60 text-xs">
+                    <div className="flex items-center gap-2 flex-wrap">
+                       <span className="text-[11px] font-bold text-slate-400">Active Filters:</span>
+                       {searchTerm && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                             Search: "{searchTerm}"
+                             <button onClick={() => setSearchTerm('')} className="hover:text-rose-500"><X size={12} /></button>
+                          </span>
+                       )}
+                       {(startDateFilter || endDateFilter) && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                             {startDateFilter || 'Start'} → {endDateFilter || 'End'}
+                             <button onClick={() => { setStartDateFilter(''); setEndDateFilter(''); }} className="hover:text-rose-500"><X size={12} /></button>
+                          </span>
+                       )}
+                       {statusFilter !== 'All' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                             Status: {statusFilter}
+                             <button onClick={() => setStatusFilter('All')} className="hover:text-rose-500"><X size={12} /></button>
+                          </span>
+                       )}
+                    </div>
+                    <button 
+                      onClick={() => {
+                         setSearchTerm('');
+                         setStartDateFilter('');
+                         setEndDateFilter('');
+                         setStatusFilter('All');
+                      }}
+                      className="text-[11px] font-bold text-rose-500 hover:text-rose-600 flex items-center gap-1 hover:underline"
+                    >
+                       <RotateCcw size={12} />
+                       <span>Clear All</span>
+                    </button>
+                 </div>
+              )}
+           </div>
 
            <div className="hcm-table-container">
               <table className="hcm-table">

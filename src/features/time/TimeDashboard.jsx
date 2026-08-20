@@ -23,6 +23,7 @@ import PageHeader from '../../shared/components/layout/PageHeader';
 import StatCard from '../../shared/components/ui/StatCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../../shared/components/ui/Avatar';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const TimeDashboard = () => {
   // --- Data States ---
@@ -37,7 +38,7 @@ const TimeDashboard = () => {
   });
 
   // --- UI States ---
-  const [activeTab, setActiveTab] = useState('live'); // live, leaves, schedule, history
+  const [activeTab, setActiveTab] = usePersistedTab('time_dashboard', 'live'); // live, leaves, schedule, history
   const [searchTerm, setSearchTerm] = useState('');
   const [modeFilter, setModeFilter] = useState('All');
   const [leaveSearch, setLeaveSearch] = useState('');

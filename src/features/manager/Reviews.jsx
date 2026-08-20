@@ -26,24 +26,18 @@ import IconButton from '../../shared/components/ui/IconButton';
 import PageHeader from '../../shared/components/ui/PageHeader';
 import EmptyState from '../../shared/components/ui/EmptyState';
 import api from '../../utils/apiService';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const Reviews = () => {
    const { reviews, teamMembers, showToast, addReview, updateReview, kpis } = useManager();
 
-   const defaultReviews = useMemo(() => [
-      { id: 'rev-1', employeeId: 'emp-1', name: 'Alex Morgan', role: 'Frontend Dev', period: 'Q3 2026', rating: 4.8, status: 'Submitted', strengths: 'Exceptional UI execution and component design', improvement: 'Cross-functional system architecture', summary: 'Consistently delivers high quality frontend code.' },
-      { id: 'rev-2', employeeId: 'emp-2', name: 'Sarah Jenkins', role: 'UI/UX Designer', period: 'Q3 2026', rating: 4.5, status: 'Draft', strengths: 'Outstanding design systems and Figma component libraries', improvement: 'User testing documentation', summary: 'Great design sense and rapid iteration.' },
-      { id: 'rev-3', employeeId: 'emp-3', name: 'Michael Chen', role: 'Backend Engineer', period: 'Q2 2026', rating: 4.9, status: 'Acknowledged', strengths: 'High-performance microservices and database optimization', improvement: 'API documentation velocity', summary: 'Key contributor to backend stability.' },
-      { id: 'rev-4', employeeId: 'emp-4', name: 'Emily Davis', role: 'QA Lead', period: 'Q2 2026', rating: 4.6, status: 'Submitted', strengths: 'Thorough E2E automation coverage and regression testing', improvement: 'Performance stress testing', summary: 'Ensures top-tier product quality.' }
-   ], []);
-
    const activeReviews = useMemo(() => {
-      return (reviews && reviews.length > 0) ? reviews : defaultReviews;
-   }, [reviews, defaultReviews]);
+      return reviews || [];
+   }, [reviews]);
 
    // UI States
    const [selectedReview, setSelectedReview] = useState(null);
-   const [activeTab, setActiveTab] = useState('All');
+   const [activeTab, setActiveTab] = usePersistedTab('mgr_reviews', 'All');
    const [showAddModal, setShowAddModal] = useState(false);
    const [searchQuery, setSearchQuery] = useState('');
 

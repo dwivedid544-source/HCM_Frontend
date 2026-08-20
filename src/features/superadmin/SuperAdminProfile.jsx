@@ -13,6 +13,7 @@ import { useTheme } from '../../hooks/ThemeContext';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import { employeeAPI, uploadAPI } from '../../utils/apiService';
 import DatePicker from '../../shared/components/common/DatePicker';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const SuperAdminProfile = () => {
   const { user, refreshUser } = useAuth();
@@ -32,7 +33,7 @@ const SuperAdminProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   
   // UI states
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = usePersistedTab('sa_profile', 'personal');
   const [avatarPreview, setAvatarPreview] = useState(
     user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Super Admin')}&background=4f46e5&color=fff&bold=true`
   );

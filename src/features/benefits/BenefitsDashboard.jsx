@@ -22,6 +22,7 @@ import PageHeader from '../../shared/components/layout/PageHeader';
 import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../../shared/components/ui/Avatar';
 import { useCurrency } from '../../hooks/useCurrency';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const BenefitsDashboard = () => {
   const { formatCurrency, getSymbol, getIcon, masterCurrency } = useCurrency();
@@ -31,7 +32,7 @@ const BenefitsDashboard = () => {
   const [globalClaims, setGlobalClaims] = useState([]);
   
   // --- UI States ---
-  const [activeTab, setActiveTab] = useState('catalog'); // catalog, claims, wellness
+  const [activeTab, setActiveTab] = usePersistedTab('benefits_dashboard', 'catalog'); // catalog, claims, wellness
   const [benefitSearch, setBenefitSearch] = useState('');
   const [claimSearch, setClaimSearch] = useState('');
   const [claimFilter, setClaimFilter] = useState('All');

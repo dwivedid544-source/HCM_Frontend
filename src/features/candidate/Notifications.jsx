@@ -8,11 +8,12 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../utils/cn';
 import { useCandidate } from '../../context/CandidateContext';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const Notifications = () => {
   const navigate = useNavigate();
   const { notifications, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications, showToast } = useCandidate();
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = usePersistedTab('cand_notifs', 'all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const categories = [

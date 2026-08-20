@@ -16,10 +16,11 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const EmployeeSettings = () => {
   const { showToast, profile, submitResignation } = useEmployee();
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = usePersistedTab('emp_settings', 'general');
 
   const [resignationData, setResignationData] = useState({
     reason: '',

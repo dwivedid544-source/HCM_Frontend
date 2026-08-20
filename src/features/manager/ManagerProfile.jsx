@@ -14,6 +14,7 @@ import { uploadAPI } from '../../utils/apiService';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import DatePicker from '../../shared/components/common/DatePicker';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const ManagerProfile = () => {
   const { formatCurrency, getSymbol, getIcon, masterCurrency } = useCurrency();
@@ -26,7 +27,7 @@ const ManagerProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   
   // UI states
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = usePersistedTab('mgr_profile', 'personal');
   const [avatarPreview, setAvatarPreview] = useState('');
   const fileInputRef = useRef(null);
   const docInputRef = useRef(null);

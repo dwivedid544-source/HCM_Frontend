@@ -31,6 +31,7 @@ import StatCard from '../../shared/components/ui/StatCard';
 import CenterModal from '../../shared/components/common/CenterModal';
 import PermissionGate from '../../shared/components/common/PermissionGate';
 import DatePicker from '../../shared/components/common/DatePicker';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -52,7 +53,7 @@ const Tasks = () => {
   const { tasks, teamMembers, showToast, addTask, updateTaskStatus } = useManager();
   
   // UI States
-  const [viewMode, setViewMode] = useState('board');
+  const [viewMode, setViewMode] = usePersistedTab('mgr_tasks_view', 'board', 'view');
   const [selectedTask, setSelectedTask] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');

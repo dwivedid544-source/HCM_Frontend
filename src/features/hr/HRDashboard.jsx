@@ -84,10 +84,50 @@ const HRDashboard = () => {
   }).length;
 
   const stats = [
-    { label: 'Open Jobs', value: openJobsCount, trend: `+${jobs.reduce((a,b)=>a+(b.new||0),0)} new this week`, trendPct: '8%', icon: Briefcase, color: 'blue', bg: 'bg-blue-50 dark:bg-blue-950/20', iconColor: 'text-blue-600 dark:text-blue-450', trendColor: 'text-blue-500 dark:text-blue-400' },
-    { label: 'New Applicants', value: candidates.length, trend: `+${newApplicants} since last week`, trendPct: '14%', icon: Users, color: 'purple', bg: 'bg-purple-50 dark:bg-purple-950/20', iconColor: 'text-purple-600 dark:text-purple-450', trendColor: 'text-purple-500 dark:text-purple-400' },
-    { label: 'Interviews Today', value: todayInterviewsCount, trend: `${todayInterviewsCount > 0 ? todayInterviewsCount + ' today' : 'None today'}`, trendPct: todayInterviewsCount > 0 ? '+20%' : '0%', icon: CalendarCheck, color: 'green', bg: 'bg-emerald-50 dark:bg-emerald-950/20', iconColor: 'text-emerald-600 dark:text-emerald-450', trendColor: 'text-emerald-500 dark:text-emerald-450' },
-    { label: 'Hires This Month', value: hiresThisMonthCount, trend: `+${hiresThisMonthCount} vs last month`, trendPct: '12%', icon: BadgeCheck, color: 'orange', bg: 'bg-orange-50 dark:bg-orange-950/20', iconColor: 'text-orange-600 dark:text-orange-450', trendColor: 'text-orange-500 dark:text-orange-400' },
+    { 
+      label: 'Open Jobs', 
+      value: openJobsCount, 
+      trend: openJobsCount > 0 ? `${openJobsCount} Active Published` : 'No active openings', 
+      trendPct: openJobsCount > 0 ? '+100%' : '0%', 
+      icon: Briefcase, 
+      color: 'blue', 
+      bg: 'bg-blue-50 dark:bg-blue-950/20', 
+      iconColor: 'text-blue-600 dark:text-blue-450', 
+      trendColor: 'text-blue-500 dark:text-blue-400' 
+    },
+    { 
+      label: 'New Applicants', 
+      value: candidates.length, 
+      trend: newApplicants > 0 ? `+${newApplicants} since last week` : candidates.length > 0 ? `${candidates.length} total candidates` : 'No applicants yet', 
+      trendPct: newApplicants > 0 ? `+${Math.min(100, newApplicants * 10)}%` : '0%', 
+      icon: Users, 
+      color: 'purple', 
+      bg: 'bg-purple-50 dark:bg-purple-950/20', 
+      iconColor: 'text-purple-600 dark:text-purple-450', 
+      trendColor: 'text-purple-500 dark:text-purple-400' 
+    },
+    { 
+      label: 'Interviews Today', 
+      value: todayInterviewsCount, 
+      trend: todayInterviewsCount > 0 ? `${todayInterviewsCount} scheduled today` : 'None scheduled', 
+      trendPct: todayInterviewsCount > 0 ? '+100%' : '0%', 
+      icon: CalendarCheck, 
+      color: 'green', 
+      bg: 'bg-emerald-50 dark:bg-emerald-950/20', 
+      iconColor: 'text-emerald-600 dark:text-emerald-450', 
+      trendColor: 'text-emerald-500 dark:text-emerald-450' 
+    },
+    { 
+      label: 'Hires This Month', 
+      value: hiresThisMonthCount, 
+      trend: hiresThisMonthCount > 0 ? `+${hiresThisMonthCount} new hires` : '0 new hires this month', 
+      trendPct: hiresThisMonthCount > 0 ? '+100%' : '0%', 
+      icon: BadgeCheck, 
+      color: 'orange', 
+      bg: 'bg-orange-50 dark:bg-orange-950/20', 
+      iconColor: 'text-orange-600 dark:text-orange-450', 
+      trendColor: 'text-orange-500 dark:text-orange-400' 
+    },
   ];
 
   const funnelSteps = [
@@ -119,14 +159,16 @@ const HRDashboard = () => {
   const ratedInterviews = interviews.filter(i => i.rating !== null && i.rating !== undefined);
   const avgRating = ratedInterviews.length > 0 
     ? ratedInterviews.reduce((sum, i) => sum + i.rating, 0) / ratedInterviews.length 
-    : 4.6;
-  const candidateExperiencePct = Math.round((avgRating / 5) * 100);
+    : 0;
+  const candidateExperiencePct = avgRating > 0 ? Math.round((avgRating / 5) * 100) : 0;
 
-  const avgTimeToHire = employees.length > 0 
-    ? Math.max(10, Math.min(30, Math.round(employees.reduce((sum, e) => {
-        return sum + 14 + (e.fullName.length % 10);
-      }, 0) / employees.length))) 
-    : 18;
+  const hiredCandidates = candidates.filter(c => c.stage === 'Hired' && c.appliedDate);
+  const avgTimeToHire = hiredCandidates.length > 0 
+    ? Math.max(1, Math.round(hiredCandidates.reduce((sum, c) => {
+        const days = Math.round((Date.now() - new Date(c.appliedDate).getTime()) / (1000 * 60 * 60 * 24));
+        return sum + Math.max(1, days);
+      }, 0) / hiredCandidates.length)) 
+    : (employees.length > 0 ? 14 : 0);
 
   return (
     <div className="space-y-8 pb-12 animate-fade-in flex flex-col min-h-screen lg:min-h-0 lg:h-auto overflow-hidden">
@@ -226,55 +268,64 @@ const HRDashboard = () => {
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {recentApplicants.map((app, i) => (
-                           <tr 
-                              key={i} 
-                              className="hcm-tr cursor-pointer hover:bg-slate-50/40 dark:hover:bg-slate-800/10"
-                              onClick={() => navigate('/hr/candidates', { state: { search: app.name } })}
-                           >
-                              <td className="hcm-td">
-                                 <div className="flex items-center gap-4">
-                                    <img src={app.img} alt={app.name} className="w-10 h-10 rounded-xl object-cover ring-2 ring-white dark:ring-slate-800 shadow-sm" />
-                                    <div>
-                                       <p className="text-sm font-bold text-slate-900 dark:text-white">{app.name}</p>
-                                       <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-bold">{app.exp} Exp</p>
-                                    </div>
-                                 </div>
-                              </td>
-                              <td className="hcm-td">
-                                 <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{app.role}</p>
-                              </td>
-                              <td className="hcm-td">
-                                 <div className="flex flex-col items-center gap-1.5">
-                                    <span className={cn(
-                                       "text-xs font-extrabold",
-                                       app.match > 90 ? "text-emerald-500 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
-                                    )}>{app.match}%</span>
-                                    <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                       <div className={cn("h-full rounded-full", app.match > 90 ? "bg-emerald-500 dark:bg-emerald-400" : "bg-amber-500 dark:bg-amber-400")} style={{ width: `${app.match}%` }} />
-                                    </div>
-                                 </div>
-                              </td>
-                              <td className="hcm-td">
-                                 <span className={cn(
-                                    "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                                    app.status === 'Interview' ? "bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900/30" :
-                                    app.status === 'Shortlisted' ? "bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30" :
-                                    app.status === 'Screening' ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/30" : "bg-slate-55 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-100 dark:border-slate-800"
-                                 )}>
-                                    {app.status}
-                                 </span>
-                              </td>
-                              <td className="hcm-td text-right" onClick={(e) => e.stopPropagation()}>
-                                 <button 
-                                    onClick={() => navigate('/hr/candidates', { state: { editCandidateId: app.id } })}
-                                    className="p-2 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg transition-all"
-                                 >
-                                    <ExternalLink size={18} />
-                                 </button>
+                        {recentApplicants.length > 0 ? (
+                           recentApplicants.map((app, i) => (
+                            <tr 
+                               key={i} 
+                               className="hcm-tr cursor-pointer hover:bg-slate-50/40 dark:hover:bg-slate-800/10"
+                               onClick={() => navigate('/hr/candidates', { state: { search: app.name } })}
+                            >
+                               <td className="hcm-td">
+                                  <div className="flex items-center gap-4">
+                                     <img src={app.img} alt={app.name} className="w-10 h-10 rounded-xl object-cover ring-2 ring-white dark:ring-slate-800 shadow-sm" />
+                                     <div>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white">{app.name}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-bold">{app.exp} Exp</p>
+                                     </div>
+                                  </div>
+                               </td>
+                               <td className="hcm-td">
+                                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{app.role}</p>
+                               </td>
+                               <td className="hcm-td">
+                                  <div className="flex flex-col items-center gap-1.5">
+                                     <span className={cn(
+                                        "text-xs font-extrabold",
+                                        app.match > 90 ? "text-emerald-500 dark:text-emerald-400" : "text-amber-500 dark:text-amber-400"
+                                     )}>{app.match}%</span>
+                                     <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div className={cn("h-full rounded-full", app.match > 90 ? "bg-emerald-500 dark:bg-emerald-400" : "bg-amber-500 dark:bg-amber-400")} style={{ width: `${app.match}%` }} />
+                                     </div>
+                                  </div>
+                               </td>
+                               <td className="hcm-td">
+                                  <span className={cn(
+                                     "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                                     app.status === 'Interview' ? "bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900/30" :
+                                     app.status === 'Shortlisted' ? "bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30" :
+                                     app.status === 'Screening' ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/30" : "bg-slate-55 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-100 dark:border-slate-800"
+                                  )}>
+                                     {app.status}
+                                  </span>
+                               </td>
+                               <td className="hcm-td text-right" onClick={(e) => e.stopPropagation()}>
+                                  <button 
+                                     onClick={() => navigate('/hr/candidates', { state: { editCandidateId: app.id } })}
+                                     className="p-2 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg transition-all"
+                                  >
+                                     <ExternalLink size={18} />
+                                  </button>
+                               </td>
+                            </tr>
+                           ))
+                        ) : (
+                           <tr>
+                              <td colSpan="5" className="py-12 text-center text-slate-400 dark:text-slate-500">
+                                 <p className="text-xs font-bold">No active candidate applications found.</p>
+                                 <p className="text-[10px] text-slate-400 mt-1">Applications submitted to your published jobs will appear here in real time.</p>
                               </td>
                            </tr>
-                        ))}
+                        )}
                     </tbody>
                  </table>
               </div>

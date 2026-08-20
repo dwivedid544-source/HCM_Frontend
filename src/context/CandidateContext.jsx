@@ -257,13 +257,16 @@ export const CandidateProvider = ({ children }) => {
 
   const applyForJob = async (jobId, details) => {
     try {
-      await candidateAPI.applyToJob(jobId, details);
+      const res = await candidateAPI.applyToJob(jobId, details);
       await fetchApplications();
       await fetchProfile();
       showToast('Application successfully dispatched!');
+      return { success: true, data: res.data?.data };
     } catch (err) {
-      console.error(err);
-      showToast('Failed to submit application', 'error');
+      console.error('[applyForJob error]:', err);
+      const msg = err.response?.data?.error?.message || err.response?.data?.message || 'Failed to submit application';
+      showToast(msg, 'error');
+      return { success: false, message: msg };
     }
   };
 

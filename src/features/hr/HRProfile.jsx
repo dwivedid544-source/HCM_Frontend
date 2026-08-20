@@ -14,6 +14,7 @@ import { employeeAPI, uploadAPI } from '../../utils/apiService';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import ConfirmDialog from '../../shared/components/admin/ConfirmDialog';
 import DatePicker from '../../shared/components/common/DatePicker';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const HRProfile = () => {
   const { user } = useAuth();
@@ -21,7 +22,7 @@ const HRProfile = () => {
   const { formatDate } = useDateFormat();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = usePersistedTab('hr_profile', 'personal');
   const [avatarPreview, setAvatarPreview] = useState('');
   const [docToDelete, setDocToDelete] = useState(null);
   const fileInputRef = useRef(null);

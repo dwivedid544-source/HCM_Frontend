@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -25,7 +25,7 @@ const STAGES_CONFIG = [
 ];
 
 const HiringPipeline = () => {
-  const { candidates, moveCandidateStage, showToast, interviews = [], offers = [] } = useHR();
+  const { candidates, moveCandidateStage, showToast, interviews = [], offers = [], refetch } = useHR();
   const { users } = useAdmin();
   const navigate = useNavigate();
 
@@ -34,6 +34,30 @@ const HiringPipeline = () => {
   const [filterRole, setFilterRole] = useState('');
   const [filterStage, setFilterStage] = useState('');
   const [isExporting, setIsExporting] = useState(false);
+
+  // Dynamic real-time auto-synchronization
+  useEffect(() => {
+    if (typeof refetch === 'function') {
+      refetch();
+    }
+    const interval = setInterval(() => {
+      if (typeof refetch === 'function') {
+        refetch();
+      }
+    }, 4000);
+
+    const handleFocus = () => {
+      if (typeof refetch === 'function') {
+        refetch();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [refetch]);
 
   // Dynamic roles filter based on available candidates
   const uniqueRoles = useMemo(() => {
@@ -263,12 +287,13 @@ const HiringPipeline = () => {
                       <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{cand.exp ? `${cand.exp} Exp` : 'Exp N/A'}</p>
                     </td>
                     <td className="hcm-td text-center">
-                       <div className="flex items-center justify-center gap-1.5 min-w-[280px] py-1.5">
+                        <div className="flex items-center justify-center gap-1.5 min-w-[280px] py-1.5">
                          {STAGES_CONFIG.map((stage, idx) => {
-                            const isCurrent = cand.stage === stage.id;
+                            const isHired = cand.stage === 'Hired' || cand.stage === 'HIRED';
                             const currentIdx = STAGES_CONFIG.findIndex(s => s.id === cand.stage);
-                            const isCompleted = currentIdx > idx;
-                            const isFuture = currentIdx < idx;
+                            const isCompleted = isHired || currentIdx > idx;
+                            const isCurrent = !isHired && cand.stage === stage.id;
+                            const isFuture = !isHired && currentIdx < idx;
                             const isRejected = cand.stage === 'Rejected';
 
                             return (
@@ -278,8 +303,9 @@ const HiringPipeline = () => {
                                         onClick={() => handleStageClick(cand, stage)}
                                         className={cn(
                                            "w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black transition-all border shadow-sm cursor-pointer hover:scale-110 active:scale-95",
+                                           isHired && idx === 5 ? "bg-emerald-600 border-emerald-500 text-white ring-4 ring-emerald-500/25 scale-110 shadow-md" :
                                            isCurrent && !isRejected ? "bg-indigo-600 border-indigo-500 text-white animate-pulse scale-110 shadow-md ring-4 ring-indigo-500/25" :
-                                           isCompleted && !isRejected ? "bg-emerald-500 border-emerald-500 text-white animate-pulse" :
+                                           isCompleted && !isRejected ? "bg-emerald-500 border-emerald-500 text-white" :
                                            isRejected && idx <= currentIdx ? "bg-rose-500 border-rose-500 text-white" :
                                            "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-750 text-slate-400 dark:text-slate-500 hover:border-slate-400 dark:hover:border-slate-500"
                                         )}
@@ -293,7 +319,7 @@ const HiringPipeline = () => {
                                      
                                      {/* Simple Pure CSS Tooltip */}
                                      <div className="absolute bottom-full mb-1.5 hidden group-hover/node:block bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[9px] font-black px-2 py-1 rounded shadow-premium whitespace-nowrap z-50 capitalize">
-                                        {stage.label} ({isCurrent ? 'In Progress' : isCompleted ? 'Success' : 'Pending'})
+                                        {stage.label} ({isHired ? 'Completed' : isCurrent ? 'In Progress' : isCompleted ? 'Success' : 'Pending'})
                                      </div>
                                   </div>
                                   

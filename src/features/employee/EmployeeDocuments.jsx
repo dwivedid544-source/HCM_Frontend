@@ -9,12 +9,13 @@ import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
 import CenterModal from '../../shared/components/layout/CenterModal';
 import PermissionGate from '../../shared/components/common/PermissionGate';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const EmployeeDocuments = () => {
   const { documents, uploadDoc, deleteDoc, showToast, loading, error, refetchAll } = useEmployee();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeCategory, setActiveCategory] = usePersistedTab('emp_docs_cat', 'All', 'category');
   
   const [selectedFile, setSelectedFile] = useState(null);
   const [docName, setDocName] = useState('');
@@ -48,6 +49,17 @@ const EmployeeDocuments = () => {
     return matchesSearch && matchesCat;
   });
 
+  const [isUploading, setIsUploading] = useState(false);
+
+  const readFileAsBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -57,46 +69,49 @@ const EmployeeDocuments = () => {
       const sizeStr = kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`;
       setFileSize(sizeStr);
 
-      // Try cloud upload first, fallback to base64
       try {
-        const response = await uploadAPI.uploadDocument(file, 'hcm/documents');
-        const cloudUrl = response.data?.data?.url;
-        if (cloudUrl) {
-          setFileBase64(cloudUrl);
-        } else {
-          throw new Error('No URL returned');
-        }
+        const base64 = await readFileAsBase64(file);
+        setFileBase64(base64);
       } catch (err) {
-        console.error('Cloud doc upload failed, using base64 fallback:', err);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setFileBase64(reader.result);
-        };
-        reader.readAsDataURL(file);
+        console.error('Base64 read failed:', err);
       }
     }
   };
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
-    if (!docName) {
-      showToast('Please select a file or set a name', 'error');
+    if (!selectedFile && !docName) {
+      showToast('Please select a file to upload', 'error');
       return;
     }
-    const formData = new FormData(e.target);
-    const newDoc = {
-      name: docName,
-      category: formData.get('category'),
-      size: fileSize,
-      fileBase64: fileBase64 || null
-    };
-    await uploadDoc(newDoc);
-    setIsUploadModalOpen(false);
-    setSelectedFile(null);
-    setDocName('');
-    setFileBase64('');
-    setFileSize('0 KB');
+    try {
+      setIsUploading(true);
+      let payloadBase64 = fileBase64;
+      if (!payloadBase64 && selectedFile) {
+        payloadBase64 = await readFileAsBase64(selectedFile);
+      }
+      const formData = new FormData(e.target);
+      const newDoc = {
+        name: docName || selectedFile?.name || 'Document.pdf',
+        category: formData.get('category') || 'Other',
+        size: fileSize || '1.0 KB',
+        fileBase64: payloadBase64 || null,
+        content: payloadBase64 || null
+      };
+      await uploadDoc(newDoc);
+      setIsUploadModalOpen(false);
+      setSelectedFile(null);
+      setDocName('');
+      setFileBase64('');
+      setFileSize('0 KB');
+    } catch (err) {
+      console.error('Error committing document to vault:', err);
+      showToast('Failed to upload document', 'error');
+    } finally {
+      setIsUploading(false);
+    }
   };
+
 
   const handleDownloadZip = () => {
     if (documents.length === 0) {

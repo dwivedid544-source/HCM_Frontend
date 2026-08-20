@@ -30,8 +30,10 @@ import { useManager } from '../../context/ManagerContext';
 import StatCard from '../../shared/components/ui/StatCard';
 import CenterModal from '../../shared/components/common/CenterModal';
 import Avatar from '../../shared/components/ui/Avatar';
-import PermissionGate from '../../shared/components/common/PermissionGate';
+import EmptyState from '../../shared/components/ui/EmptyState';
 import DatePicker from '../../shared/components/common/DatePicker';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
+import PermissionGate from '../../shared/components/common/PermissionGate';
 
 const KPITracking = () => {
   const { kpis, teamMembers, showToast, addKpi, updateKpi } = useManager();
@@ -39,7 +41,7 @@ const KPITracking = () => {
   // UI States
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [feedback, setFeedback] = useState('');
-  const [activeTab, setActiveTab] = useState('Active');
+  const [activeTab, setActiveTab] = usePersistedTab('mgr_kpi', 'Active');
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isExporting, setIsExporting] = useState(false);

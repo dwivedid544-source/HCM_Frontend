@@ -23,6 +23,7 @@ import {
    Loader2
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 import { useAdmin } from '../../context/AdminContext';
 import StatCard from '../../shared/components/ui/StatCard';
 import { useHR } from '../../context/HRContext';
@@ -43,27 +44,19 @@ const HRApprovals = () => {
    const teamMembers = employees || [];
    const { formatCurrency } = useCurrency();
 
-   const defaultMembers = useMemo(() => [
-     { id: 'emp-1', name: 'Alex Morgan' },
-     { id: 'emp-2', name: 'Sarah Jenkins' },
-     { id: 'emp-3', name: 'Michael Chen' },
-     { id: 'emp-4', name: 'Emily Davis' },
-     { id: 'emp-5', name: 'David Wilson' }
-   ], []);
-
    const availableMembers = useMemo(() => {
      if (employees && employees.length > 0) {
        return employees.map(e => ({ id: e.id, name: e.fullName || e.name || e.user?.email || 'Employee' }));
      }
-     return defaultMembers;
-   }, [employees, defaultMembers]);
+     return [];
+   }, [employees]);
 
    // UI States
-   const [activeModule, setActiveModule] = useState('leaves'); // 'leaves' | 'increments'
+   const [activeModule, setActiveModule] = usePersistedTab('hr_approvals_mod', 'leaves', 'mod');
    const [isExporting, setIsExporting] = useState(false);
    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
    const [selectedRequest, setSelectedRequest] = useState(null);
-   const [activeTab, setActiveTab] = useState('Pending');
+   const [activeTab, setActiveTab] = usePersistedTab('hr_approvals_tab', 'Pending', 'status');
    const [showAddModal, setShowAddModal] = useState(false);
    const [searchQuery, setSearchQuery] = useState('');
 

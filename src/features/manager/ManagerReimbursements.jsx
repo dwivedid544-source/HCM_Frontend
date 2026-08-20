@@ -8,6 +8,7 @@ import Avatar from '../../shared/components/ui/Avatar';
 import { managerAPI } from '../../utils/apiService';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import toast from 'react-hot-toast';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const ManagerReimbursements = () => {
   const { formatCurrency } = useCurrency();
@@ -15,7 +16,7 @@ const ManagerReimbursements = () => {
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('Pending');
+  const [activeTab, setActiveTab] = usePersistedTab('mgr_reimbursements', 'Pending');
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [comment, setComment] = useState('');
 

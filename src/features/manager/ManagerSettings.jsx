@@ -22,10 +22,11 @@ import {
 import { cn } from '../../utils/cn';
 import { useManager } from '../../context/ManagerContext';
 import { authAPI } from '../../utils/apiService';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const ManagerSettings = () => {
   const { profile, updateProfile, showToast } = useManager();
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = usePersistedTab('mgr_settings', 'general');
 
   const [settings, setSettings] = useState({
     general: {

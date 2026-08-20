@@ -12,6 +12,7 @@ import { useAdmin } from '../../context/AdminContext';
 import { uploadAPI } from '../../utils/apiService';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import DatePicker from '../../shared/components/common/DatePicker';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const AdminProfile = () => {
   const { user } = useAuth();
@@ -26,6 +27,7 @@ const AdminProfile = () => {
       HR: 'HR Manager',
       MANAGER: 'Manager',
       EMPLOYEE: 'Employee',
+      CANDIDATE: 'Candidate',
     };
     return roleMap[role.toUpperCase()] || role;
   };
@@ -38,7 +40,7 @@ const AdminProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   
   // UI states
-  const [activeTab, setActiveTab] = useState('personal');
+  const [activeTab, setActiveTab] = usePersistedTab('admin_profile', 'personal');
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || '');
   const fileInputRef = useRef(null);
   

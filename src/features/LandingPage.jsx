@@ -38,7 +38,8 @@ import {
   Building,
   Code,
   Fingerprint,
-  Sparkles
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '../utils/cn';
@@ -86,6 +87,7 @@ const LandingPage = () => {
   const [applyFormData, setApplyFormData] = useState({ name: '', email: '', phone: '', resumeName: '', portfolioUrl: '', explanation: '' });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiScore, setAiScore] = useState(0);
+  const [aiEvaluationResult, setAiEvaluationResult] = useState(null);
   const [applySubmitting, setApplySubmitting] = useState(false);
   const [applyError, setApplyError] = useState('');
 
@@ -731,20 +733,18 @@ const [activeRole, setActiveRole] = useState(null);
                   <div>
                     <span className="text-[10px] font-bold text-primary-600 font-bold mb-2 block">Step 2 of 2</span>
                     <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">
-                      Tell us about your background
+                          Tell us about your background
                     </h3>
                     <p className="text-sm font-medium text-slate-400 mt-2">
                       Upload your resume and links for AI-driven candidate ranking evaluation.
                     </p>
                   </div>
-
                   <form
                     onSubmit={async (e) => {
                       e.preventDefault();
                       setIsAnalyzing(true);
                       setApplyError('');
                       try {
-                        // Submit application to backend (Backend now uses AIClient internally)
                         const response = await publicAPI.submitCareerApplication({
                           jobId: applyJobId,
                           jobTitle: applyJobTitle,
@@ -752,16 +752,19 @@ const [activeRole, setActiveRole] = useState(null);
                         });
                         
                         setIsAnalyzing(false);
-                        if (response && response.data && response.data.aiScore) {
-                          setAiScore(response.data.aiScore);
-                        } else {
-                          // Fallback display if backend fails to return AI score but application succeeds
-                          setAiScore('N/A');
-                        }
+                        const appData = response?.data?.data || response?.data || {};
+                        const parsedScore = typeof appData.aiScore === 'number' ? appData.aiScore : 0;
+                        setAiScore(parsedScore);
+                        setAiEvaluationResult(appData);
                         setApplyStep(3);
                       } catch (err) {
                         setIsAnalyzing(false);
-                        setApplyError(err.response?.data?.error?.message || 'Failed to submit application. Please try again.');
+                        const errMsg = err.response?.data?.error?.message || 'Failed to submit application. Please try again.';
+                        setApplyError(errMsg);
+                        if (err.response?.data?.error?.code === 'INVALID_RESUME') {
+                          // Reset uploaded file state so the candidate is prompted to upload a real CV/resume
+                          setApplyFormData(prev => ({ ...prev, resumeName: '', resumeData: '' }));
+                        }
                       }
                     }}
                     className="space-y-6"
@@ -771,7 +774,7 @@ const [activeRole, setActiveRole] = useState(null);
                       <div className="border-2 border-dashed border-slate-200 hover:border-primary-500 rounded-3xl p-6 text-center cursor-pointer transition-all bg-slate-50 flex flex-col items-center justify-center gap-2 group relative">
                         <input 
                           type="file" 
-                          accept=".pdf,.doc,.docx"
+                          accept=".pdf,.doc,.docx,.txt"
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                           onChange={(e) => {
                             if (e.target.files && e.target.files.length > 0) {
@@ -783,6 +786,7 @@ const [activeRole, setActiveRole] = useState(null);
                                   resumeName: file.name,
                                   resumeData: event.target.result
                                 });
+                                setApplyError('');
                               };
                               reader.readAsDataURL(file);
                             }
@@ -796,7 +800,7 @@ const [activeRole, setActiveRole] = useState(null);
                           </div>
                         ) : (
                           <div className="z-10 flex flex-col items-center gap-1">
-                            <span className="text-xs font-bold text-slate-800">Click to upload your resume (PDF, DOCX)</span>
+                            <span className="text-xs font-bold text-slate-800">Click to upload your resume (PDF, DOCX, TXT)</span>
                             <span className="text-[9px] text-slate-450 uppercase font-black tracking-widest">Max file size 10MB</span>
                           </div>
                         )}
@@ -807,7 +811,6 @@ const [activeRole, setActiveRole] = useState(null);
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Portfolio / LinkedIn Profile URL</label>
                       <input
                         type="url"
-                        required
                         value={applyFormData.portfolioUrl}
                         onChange={(e) => setApplyFormData({ ...applyFormData, portfolioUrl: e.target.value })}
                         placeholder="https://linkedin.com/in/alexrivera"
@@ -822,14 +825,18 @@ const [activeRole, setActiveRole] = useState(null);
                         rows={3}
                         value={applyFormData.explanation}
                         onChange={(e) => setApplyFormData({ ...applyFormData, explanation: e.target.value })}
-                        placeholder="Share a brief explanation..."
+                        placeholder="Share a brief explanation of your qualifications and interest..."
                         className="input-field bg-slate-50 border-transparent font-medium text-slate-950 p-4 resize-none"
                       />
                     </div>
 
                     {applyError && (
-                      <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-600">
-                        {applyError}
+                      <div className="p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-2xl text-xs font-bold text-rose-600 dark:text-rose-400 flex items-start gap-3">
+                        <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-extrabold text-rose-700 dark:text-rose-300">Document Verification Notice</p>
+                          <p className="mt-0.5 text-slate-600 dark:text-slate-300 font-medium leading-relaxed">{applyError}</p>
+                        </div>
                       </div>
                     )}
 
@@ -846,7 +853,7 @@ const [activeRole, setActiveRole] = useState(null);
                         disabled={!applyFormData.resumeName}
                         className="flex-2 py-4 btn-primary shadow-xl shadow-primary-200 font-bold text-[10px] disabled:opacity-50"
                       >
-                        Submit & Scan Application
+                        Submit Application
                       </button>
                     </div>
                   </form>
@@ -855,19 +862,19 @@ const [activeRole, setActiveRole] = useState(null);
 
               {applyStep === 2 && isAnalyzing && (
                 <div className="text-center space-y-8 py-12">
-                  <div className="w-24 h-24 bg-primary-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-primary-600 shadow-xl relative animate-spin">
-                    <Brain size={44} />
+                  <div className="w-20 h-20 bg-primary-50 dark:bg-primary-950/40 rounded-3xl flex items-center justify-center mx-auto text-primary-600 dark:text-primary-400 shadow-xl border border-primary-100 dark:border-primary-900/30">
+                    <Sparkles size={36} className="animate-spin" />
                   </div>
                   <div className="space-y-3">
-                    <span className="text-[10px] font-bold text-primary-600 font-bold block">Proprietary Matcher Active</span>
-                    <h3 className="text-2xl font-black text-slate-900 tracking-tighter leading-none dark:text-white">
-                      AI Screening Candidate Profile...
+                    <span className="text-[10px] font-bold text-primary-600 dark:text-primary-400 font-bold uppercase tracking-widest block">Processing Submission</span>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight leading-none dark:text-white">
+                      Submitting Your Application...
                     </h3>
-                    <p className="text-xs font-medium text-slate-400 max-w-sm mx-auto leading-relaxed pt-2">
-                      Our machine learning screening service is comparing resume entities, tech stacks, and domain metrics against our profile alignment model...
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed pt-1">
+                      Securely uploading your resume and registering your candidate profile with our hiring team...
                     </p>
                   </div>
-                  <div className="w-full max-w-xs mx-auto h-2 bg-slate-100 rounded-full overflow-hidden relative">
+                  <div className="w-full max-w-xs mx-auto h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: "100%" }}
@@ -879,36 +886,55 @@ const [activeRole, setActiveRole] = useState(null);
               )}
 
               {applyStep === 3 && (
-                <div className="text-center space-y-10 py-6">
-                  <div className="w-24 h-24 bg-primary-600 rounded-[2.5rem] flex flex-col items-center justify-center mx-auto text-white shadow-2xl relative">
-                    <Award size={36} className="mb-0.5" />
-                    <span className="text-sm font-black tracking-tighter leading-none">{aiScore}%</span>
+                <div className="text-center space-y-6 py-4">
+                  <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/10 border border-emerald-100 dark:border-emerald-900/30">
+                    <CheckCircle2 size={42} className="stroke-[2.5]" />
                   </div>
-                  <div className="space-y-4">
-                    <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em] block">Match Score Computed</span>
-                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter leading-none dark:text-white">
-                      Excellent Alignment, {applyFormData.name}!
+                  
+                  <div className="space-y-3">
+                    <span className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800 inline-block">
+                      Application Submitted
+                    </span>
+                    <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-snug dark:text-white">
+                      Thank You for Applying, {applyFormData.name || 'Candidate'}!
                     </h3>
-                    <p className="text-sm font-medium text-slate-500 max-w-md mx-auto leading-relaxed">
-                      Our screening engine evaluated your profile with a match score of <strong>{aiScore}%</strong> for the <strong>{applyJobTitle}</strong> position.
-                    </p>
-                    <p className="text-xs text-slate-450 leading-normal max-w-sm mx-auto pt-2 font-medium">
-                      Based on this scoring bracket, your candidate profile has been flagged for prioritized review. An HCM HR team partner will contact you at <strong>{applyFormData.email}</strong> or <strong>{applyFormData.phone}</strong> within 24 hours.
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
+                      Your application for the <strong>{applyJobTitle}</strong> position has been successfully received.
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setIsApplyModalOpen(false);
-                      setApplyStep(1);
-                      setApplyFormData({ name: '', email: '', phone: '', resumeName: '', portfolioUrl: '', explanation: '' });
-                      setAiScore(0);
-                      setApplyError('');
-                    }}
-                    className="btn-primary w-full max-w-xs mx-auto py-5 shadow-xl shadow-primary-200 font-bold text-[10px]"
-                  >
-                    Great, thank you!
-                  </button>
+                  <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 max-w-md mx-auto text-left space-y-2.5">
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <Sparkles size={14} className="text-primary-500" />
+                      <span>Application Status & Next Steps</span>
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                      Your resume and profile details have been logged in our recruitment system for <strong className="text-slate-900 dark:text-white">{applyFormData.email}</strong>.
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Our talent acquisition team will review your qualifications. If your background aligns with the role, an HR partner will reach out to you directly to arrange an introductory interview.
+                    </p>
+                  </div>
+
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium italic">
+                    We appreciate your interest in our team and wish you the very best!
+                  </p>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        setIsApplyModalOpen(false);
+                        setApplyStep(1);
+                        setApplyFormData({ name: '', email: '', phone: '', resumeName: '', portfolioUrl: '', explanation: '' });
+                        setAiScore(0);
+                        setAiEvaluationResult(null);
+                        setApplyError('');
+                      }}
+                      className="btn-primary w-full max-w-xs mx-auto py-3.5 shadow-xl shadow-primary-200 dark:shadow-none font-bold text-xs"
+                    >
+                      Done
+                    </button>
+                  </div>
                 </div>
               )}
             </motion.div>

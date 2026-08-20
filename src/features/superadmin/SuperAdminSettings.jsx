@@ -22,12 +22,13 @@ import { useSuperAdmin } from '../../context/SuperAdminContext';
 import { useTheme } from '../../hooks/ThemeContext';
 import { useCurrency } from '../../hooks/useCurrency';
 import { superAdminAPI, settingsAPI } from '../../utils/apiService';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const SuperAdminSettings = () => {
   const superAdminContext = useSuperAdmin();
   const { theme, toggleTheme } = useTheme();
   const { refreshCurrency } = useCurrency();
-  const [activeTab, setActiveTab] = useState('system');
+  const [activeTab, setActiveTab] = usePersistedTab('sa_settings', 'system');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 

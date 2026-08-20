@@ -40,6 +40,8 @@ import { useSuperAdmin } from '../../context/SuperAdminContext';
 import { useBenefits } from '../../features/benefits/BenefitsContext';
 import { useCurrency } from '../../hooks/useCurrency';
 import { PageHeader } from '../../shared/components/layout/PageHeader';
+import PermissionGate from '../../shared/components/common/PermissionGate';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 import ImportModal from '../../shared/components/import/ImportModal';
 
 // ─── Animation variants ───────────────────────────────────────────────────────
@@ -276,7 +278,7 @@ const BenefitsConfig = () => {
   const { getSymbol, getIcon, formatCurrency } = useCurrency();
   const CurrencyIcon = getIcon();
 
-  const [activeTab, setActiveTab] = useState('plans');
+  const [activeTab, setActiveTab] = usePersistedTab('sa_benefits', 'plans');
   const [showCreate, setShowCreate] = useState(false);
   const [showConfigure, setShowConfigure] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);

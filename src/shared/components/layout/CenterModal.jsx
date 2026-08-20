@@ -57,21 +57,23 @@ const CenterModal = ({
             )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-8 pb-4">
-              {title && (
-                <div>
-                   <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight italic">{title}</h2>
-                </div>
-              )}
-              {showClose && (
-                <button 
-                  onClick={onClose}
-                  className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-2xl transition-all hover:rotate-90"
-                >
-                  <X size={20} />
-                </button>
-              )}
-            </div>
+            {(title || showClose) && (
+              <div className="flex items-center justify-between p-8 pb-4">
+                {title && (
+                  <div>
+                     <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight italic">{title}</h2>
+                  </div>
+                )}
+                {showClose && (
+                  <button 
+                    onClick={onClose}
+                    className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-2xl transition-all hover:rotate-90"
+                  >
+                    <X size={20} />
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto scrollbar-none">

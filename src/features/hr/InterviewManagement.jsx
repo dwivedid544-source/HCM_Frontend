@@ -11,28 +11,46 @@ import { cn } from '../../utils/cn';
 import { useHR } from '../../context/HRContext';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import DatePicker from '../../shared/components/common/DatePicker';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 // ─── Helper: format time for display ───
-
 const formatDisplayTime = (timeStr) => {
   if (!timeStr) return '';
-  if (timeStr.includes(':')) {
-    const [h, m] = timeStr.split(':');
-    const hour = parseInt(h);
+  if (typeof timeStr === 'string' && timeStr.includes(':')) {
+    const parts = timeStr.trim().split(':');
+    const hour = parseInt(parts[0], 10);
+    const minute = String(parts[1] || '00').slice(0, 2).padStart(2, '0');
+    if (isNaN(hour)) return timeStr;
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour % 12 || 12;
-    return `${displayHour}:${m} ${ampm}`;
+    return `${displayHour}:${minute} ${ampm}`;
   }
   return timeStr;
 };
 
 // ─── Helper: convert to YYYY-MM-DD for comparisons ───
-const toDateKey = (dateStr) => {
-  if (!dateStr) return '';
+const toDateKey = (dateInput) => {
+  if (!dateInput) return '';
+  if (typeof dateInput === 'string') {
+    const trimmed = dateInput.trim();
+    // 1. Check YYYY-MM-DD
+    const ymdMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (ymdMatch) {
+      return `${ymdMatch[1]}-${ymdMatch[2].padStart(2, '0')}-${ymdMatch[3].padStart(2, '0')}`;
+    }
+    // 2. Check DD/MM/YYYY or DD-MM-YYYY
+    const dmyMatch = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    if (dmyMatch) {
+      return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, '0')}-${dmyMatch[1].padStart(2, '0')}`;
+    }
+  }
   try {
-    const d = new Date(dateStr);
+    const d = new Date(dateInput);
     if (isNaN(d.getTime())) return '';
-    return d.toISOString().split('T')[0];
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   } catch { return ''; }
 };
 
@@ -53,7 +71,11 @@ const InterviewManagement = () => {
   const { formatDate } = useDateFormat();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeView, setActiveView] = useState('list');
+  const [activeView, setActiveView] = usePersistedTab('hr_interviews_view', 'list', 'view');
+
+  const handleViewChange = (mode) => {
+    setActiveView(mode);
+  };
   const [editingInterview, setEditingInterview] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -105,9 +127,9 @@ const InterviewManagement = () => {
 
   // ─── Stats ───
   const stats = useMemo(() => {
-    const todayStr = new Date().toDateString();
+    const todayK = toDateKey(new Date());
     return [
-      { label: "Today's Interviews", value: interviews.filter(i => { try { return new Date(i.date).toDateString() === todayStr; } catch { return false; } }).length, icon: Calendar, bg: 'bg-primary-50', color: 'text-primary-600', gradient: 'from-primary-500 to-primary-600' },
+      { label: "Today's Interviews", value: interviews.filter(i => toDateKey(i.rawDate || i.dateTime || i.date) === todayK).length, icon: Calendar, bg: 'bg-primary-50', color: 'text-primary-600', gradient: 'from-primary-500 to-primary-600' },
       { label: 'Upcoming', value: interviews.filter(i => i.status === 'Scheduled').length, icon: Clock, bg: 'bg-amber-50', color: 'text-amber-600', gradient: 'from-amber-500 to-amber-600' },
       { label: 'Completed', value: interviews.filter(i => i.status === 'Completed').length, icon: CheckCircle2, bg: 'bg-emerald-50', color: 'text-emerald-600', gradient: 'from-emerald-500 to-emerald-600' },
       { label: 'Cancelled', value: interviews.filter(i => i.status === 'Cancelled').length, icon: RotateCcw, bg: 'bg-rose-50', color: 'text-rose-600', gradient: 'from-rose-500 to-rose-600' },
@@ -127,9 +149,9 @@ const InterviewManagement = () => {
     setFormData({ 
       candidate: interview.candidate || '',
       role: interview.role || '',
-      interviewer: interview.interviewerId || '',
-      date: interview.date || '',
-      time: interview.time || '',
+      interviewer: interview.interviewerId || (typeof interview.interviewer === 'string' ? interview.interviewer : ''),
+      date: interview.rawDate || interview.date || '',
+      time: interview.time || '10:00',
       round: interview.round || 'Technical Round',
       link: interview.link || interview.meetingLink || '',
       type: interview.type || 'Video Call',
@@ -191,7 +213,7 @@ const InterviewManagement = () => {
   const interviewsByDate = useMemo(() => {
     const map = {};
     interviews.forEach(i => {
-      const key = toDateKey(i.date);
+      const key = toDateKey(i.rawDate || i.dateTime || i.date);
       if (key) {
         if (!map[key]) map[key] = [];
         map[key].push(i);
@@ -212,10 +234,19 @@ const InterviewManagement = () => {
 
   const selectedDayInterviews = useMemo(() => {
     if (!selectedCalDay) return [];
-    return interviewsByDate[selectedCalDay] || [];
+    const key = toDateKey(selectedCalDay);
+    return interviewsByDate[key] || [];
   }, [selectedCalDay, interviewsByDate]);
 
-  const todayKey = toDateKey(new Date().toISOString());
+  const todayKey = toDateKey(new Date());
+
+  useEffect(() => {
+    if (activeView === 'calendar' && !selectedCalDay) {
+      const curMonthPrefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+      const matchingDate = Object.keys(interviewsByDate).find(k => k.startsWith(curMonthPrefix));
+      setSelectedCalDay(matchingDate || todayKey);
+    }
+  }, [activeView, todayKey, selectedCalDay, interviewsByDate, calYear, calMonth]);
 
   // ─── Status filter tabs ───
   const statusTabs = ['All', 'Scheduled', 'Completed', 'Cancelled'];
@@ -232,13 +263,13 @@ const InterviewManagement = () => {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="bg-white border border-slate-200 p-1 rounded-xl flex shadow-sm">
               <button 
-                onClick={() => { setActiveView('list'); setSelectedCalDay(null); }}
+                onClick={() => handleViewChange('list')}
                 className={cn("px-3 sm:px-4 py-2 text-sm font-bold rounded-lg transition-all", activeView === 'list' ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900")}
               >
                 List
               </button>
               <button 
-                onClick={() => setActiveView('calendar')}
+                onClick={() => handleViewChange('calendar')}
                 className={cn("px-3 sm:px-4 py-2 text-sm font-bold rounded-lg transition-all", activeView === 'calendar' ? "bg-slate-900 text-white shadow-md" : "text-slate-500 hover:text-slate-900")}
               >
                 Calendar
@@ -518,20 +549,20 @@ const InterviewManagement = () => {
                         {cell.dateKey === todayKey && <span className="ml-1 text-[8px] font-bold text-primary-500 uppercase">Today</span>}
                       </div>
                       {cell.interviews.length > 0 && (
-                        <div className="space-y-0.5">
+                        <div className="space-y-1 mt-1">
                           {cell.interviews.slice(0, 2).map((intv, i) => (
                             <div key={i} className={cn(
-                              "text-[8px] sm:text-[10px] font-bold px-1 py-0.5 rounded truncate",
-                              intv.status === 'Scheduled' ? "bg-primary-100 text-primary-700" :
-                              intv.status === 'Completed' ? "bg-emerald-100 text-emerald-700" :
-                              "bg-rose-100 text-rose-700"
+                              "text-[9px] sm:text-[11px] font-bold px-1.5 py-0.5 rounded-md truncate flex items-center gap-1 shadow-xs border",
+                              intv.status === 'Scheduled' ? "bg-primary-50 text-primary-700 border-primary-200/70 dark:bg-primary-950/40 dark:text-primary-300 dark:border-primary-900/40" :
+                              intv.status === 'Completed' ? "bg-emerald-50 text-emerald-700 border-emerald-200/70 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/40" :
+                              "bg-rose-50 text-rose-700 border-rose-200/70 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/40"
                             )}>
-                              <span className="hidden sm:inline">{intv.candidate?.substring(0, 12)}</span>
-                              <span className="sm:hidden">{intv.candidate?.substring(0, 6)}</span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                              <span className="truncate">{intv.candidate || 'Candidate'}</span>
                             </div>
                           ))}
                           {cell.interviews.length > 2 && (
-                            <div className="text-[8px] sm:text-[10px] font-bold text-slate-400 pl-1">+{cell.interviews.length - 2} more</div>
+                            <div className="text-[8px] sm:text-[9px] font-extrabold text-primary-600 pl-1">+{cell.interviews.length - 2} more</div>
                           )}
                         </div>
                       )}

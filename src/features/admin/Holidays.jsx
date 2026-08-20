@@ -23,6 +23,7 @@ import ActionDropdown from '../../shared/components/admin/ActionDropdown';
 import WeekendRuleModal from '../../shared/components/admin/WeekendRuleModal';
 import CalendarModal from '../../shared/components/admin/CalendarModal';
 import AssignmentModal from '../../shared/components/admin/AssignmentModal';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 import PermissionGate from '../../shared/components/common/PermissionGate';
 import { usePermission } from '../../hooks/usePermission';
 import { useDateFormat } from '../../hooks/useDateFormat';
@@ -108,7 +109,7 @@ const HolidayRow = ({ hday, onEdit, onDelete, showToast }) => {
 
 const Holidays = () => {
   const { holidays, deleteHoliday, showToast, calendars, deleteCalendar, createCalendar, updateCalendar, assignCalendar, removeAssignment, users, departments } = useAdmin();
-  const [activeTab, setActiveTab] = useState('Holidays');
+  const [activeTab, setActiveTab] = usePersistedTab('admin_holidays', 'Holidays');
   const [selectedCalendarId, setSelectedCalendarId] = useState('');
   const tabs = ['Work Calendars', 'Holidays', 'Weekend Rules', 'Assignments'];
   const { formatDate } = useDateFormat();

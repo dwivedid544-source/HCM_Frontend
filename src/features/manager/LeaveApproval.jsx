@@ -23,6 +23,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../utils/cn';
 import { useManager } from '../../context/ManagerContext';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 import CenterModal from '../../shared/components/common/CenterModal';
 import Avatar from '../../shared/components/ui/Avatar';
 import ImportModal from '../../shared/components/import/ImportModal';
@@ -39,27 +40,6 @@ const LeaveApproval = () => {
    const { leaveRequests, updateLeaveStatus, addLeaveRequest, teamMembers, showToast, incrementRequests, reviewIncrement, requestSalaryIncrement } = useManager();
    const { formatCurrency } = useCurrency();
 
-   const defaultMembers = useMemo(() => [
-      { id: 'emp-1', name: 'Alex Morgan', role: 'Frontend Dev', monthlyCTC: 65000 },
-      { id: 'emp-2', name: 'Sarah Jenkins', role: 'UI/UX Designer', monthlyCTC: 58000 },
-      { id: 'emp-3', name: 'Michael Chen', role: 'Backend Engineer', monthlyCTC: 72000 },
-      { id: 'emp-4', name: 'Emily Davis', role: 'QA Lead', monthlyCTC: 54000 },
-      { id: 'emp-5', name: 'David Wilson', role: 'DevOps Engineer', monthlyCTC: 80000 }
-   ], []);
-
-   const defaultLeaveRequests = useMemo(() => [
-      { id: 'lr-101', employeeId: 'emp-1', name: 'Alex Morgan', type: 'Sick Leave', startDate: '2026-08-05', endDate: '2026-08-06', days: '2', reason: 'Flu and medical recovery', status: 'Pending', canApprove: true },
-      { id: 'lr-102', employeeId: 'emp-2', name: 'Sarah Jenkins', type: 'Annual Leave', startDate: '2026-08-12', endDate: '2026-08-15', days: '4', reason: 'Family vacation', status: 'Approved', canApprove: false },
-      { id: 'lr-103', employeeId: 'emp-3', name: 'Michael Chen', type: 'Casual Leave', startDate: '2026-08-20', endDate: '2026-08-21', days: '1', reason: 'Personal errands', status: 'Manager_approved', canApprove: false },
-      { id: 'lr-104', employeeId: 'emp-4', name: 'Emily Davis', type: 'Unpaid Leave', startDate: '2026-08-25', endDate: '2026-08-26', days: '2', reason: 'Personal appointment', status: 'Rejected', canApprove: false }
-   ], []);
-
-   const defaultIncrementRequests = useMemo(() => [
-      { id: 'inc-101', employee: { id: 'emp-1', fullName: 'Alex Morgan', compensationProfile: { monthlyCTC: 65000 } }, requestedSalary: 75000, effectiveDate: '2026-09-01', reason: 'Lead frontend architect contributions and performance excellence', status: 'Pending', canApprove: true },
-      { id: 'inc-102', employee: { id: 'emp-3', fullName: 'Michael Chen', compensationProfile: { monthlyCTC: 72000 } }, requestedSalary: 82000, effectiveDate: '2026-09-01', reason: 'Database optimization and high microservice availability', status: 'Approved', canApprove: false },
-      { id: 'inc-103', employee: { id: 'emp-5', fullName: 'David Wilson', compensationProfile: { monthlyCTC: 80000 } }, requestedSalary: 92000, effectiveDate: '2026-09-15', reason: 'DevOps infrastructure automation and zero-downtime deployments', status: 'ManagerApproved', canApprove: false }
-   ], []);
-
    const availableMembers = useMemo(() => {
       if (teamMembers && teamMembers.length > 0) {
          return teamMembers.map(m => ({
@@ -69,23 +49,23 @@ const LeaveApproval = () => {
             monthlyCTC: m.compensationProfile?.monthlyCTC || m.monthlyCTC || 0
          }));
       }
-      return defaultMembers;
-   }, [teamMembers, defaultMembers]);
+      return [];
+   }, [teamMembers]);
 
    const activeLeaveRequests = useMemo(() => {
-      return (leaveRequests && leaveRequests.length > 0) ? leaveRequests : defaultLeaveRequests;
-   }, [leaveRequests, defaultLeaveRequests]);
+      return leaveRequests || [];
+   }, [leaveRequests]);
 
    const activeIncrementRequests = useMemo(() => {
-      return (incrementRequests && incrementRequests.length > 0) ? incrementRequests : defaultIncrementRequests;
-   }, [incrementRequests, defaultIncrementRequests]);
+      return incrementRequests || [];
+   }, [incrementRequests]);
 
    // UI States
-   const [activeModule, setActiveModule] = useState('leaves'); // 'leaves' | 'increments'
+   const [activeModule, setActiveModule] = usePersistedTab('mgr_leaves_mod', 'leaves', 'mod');
    const [isExporting, setIsExporting] = useState(false);
    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
    const [selectedRequest, setSelectedRequest] = useState(null);
-   const [activeTab, setActiveTab] = useState('Pending');
+   const [activeTab, setActiveTab] = usePersistedTab('mgr_leaves_tab', 'Pending', 'status');
    const [showAddModal, setShowAddModal] = useState(false);
    const [showIncrementModal, setShowIncrementModal] = useState(false);
    const [searchQuery, setSearchQuery] = useState('');

@@ -11,11 +11,12 @@ import { candidateAPI } from '../../utils/apiService';
 import { useNavigate } from 'react-router-dom';
 import CenterModal from '../../shared/components/layout/CenterModal';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const CandidateSettings = () => {
   const { profile, showToast } = useCandidate();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('account');
+  const [activeTab, setActiveTab] = usePersistedTab('cand_settings', 'account');
   const [isSaving, setIsSaving] = useState(false);
   const [isSignoutModalOpen, setIsSignoutModalOpen] = useState(false);
   const [showPasswords, setShowPasswords] = useState(false);

@@ -25,12 +25,13 @@ import { cn } from '../../utils/cn';
 import { useAdmin } from '../../context/AdminContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useCurrency } from '../../hooks/useCurrency';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const Settings = () => {
   const { appSettings, updateSettings: updateAdminSettings, resetSettings, showToast } = useAdmin();
   const { settings: globalSettings, updateSettings: updateGlobalSettings } = useSettings();
   const { masterCurrency } = useCurrency();
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = usePersistedTab('admin_settings', 'general');
 
   const handleSave = () => {
     updateGlobalSettings(globalSettings);

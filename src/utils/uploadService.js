@@ -19,9 +19,9 @@ const UploadAPI = axios.create({
   baseURL: getBaseURL(),
 });
 
-// Attach auth token
+// Attach auth token from sessionStorage or localStorage
 UploadAPI.interceptors.request.use((config) => {
-  const token = localStorage.getItem('hcm_token');
+  const token = sessionStorage.getItem('hcm_token') || localStorage.getItem('hcm_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

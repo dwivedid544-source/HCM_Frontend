@@ -77,26 +77,51 @@ export const HRProvider = ({ children }) => {
         const name = candidateInfo.fullName || email.split('@')[0] || 'Candidate';
         const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
 
-        // Compute AI Match Score dynamically based on skills intersection
+        // Extract AI Match Score from application assessment or compute from real skills intersection
         const candidateSkills = candidateInfo.skills ? candidateInfo.skills.split(',').map(s => s.trim().toLowerCase()) : [];
         const jobReqs = app.jobPost?.requirements ? app.jobPost.requirements.split(',').map(r => r.trim().toLowerCase()) : [];
 
-        let score = 70;
-        if (jobReqs.length > 0 && candidateSkills.length > 0) {
-          const matches = jobReqs.filter(req => candidateSkills.some(s => s.includes(req) || req.includes(s)));
-          score = Math.round((matches.length / jobReqs.length) * 100);
-          if (score < 50) score = 50;
-          if (score > 100) score = 100;
-        } else {
-          // Deterministic score based on name hash so it doesn't look static
-          let hash = 0;
-          for (let i = 0; i < formattedName.length; i++) {
-            hash = formattedName.charCodeAt(i) + ((hash << 5) - hash);
+        let score = null;
+        let aiAssessment = '';
+        let isInvalidResume = false;
+        if (app.coverLetter) {
+          if (app.coverLetter.includes('Valid Resume: No') || app.coverLetter.includes('Invalid Resume') || app.coverLetter.includes('Recommendation: Invalid Resume')) {
+            isInvalidResume = true;
+            score = null;
+          } else {
+            const scoreMatch = app.coverLetter.match(/AI Match Score:\s*(\d+)%/i);
+            if (scoreMatch && scoreMatch[1]) {
+              score = parseInt(scoreMatch[1], 10);
+            }
           }
-          score = 70 + (Math.abs(hash) % 26);
+          const assessMatch = app.coverLetter.match(/AI Assessment:\s*([^\n]+)/i);
+          if (assessMatch && assessMatch[1]) {
+            aiAssessment = assessMatch[1].trim();
+          }
         }
 
-        const getValidUrl = (...urls) => urls.find(u => u && (u.startsWith('http') || u.startsWith('data:'))) || urls.find(u => !!u) || '';
+        if (!isInvalidResume && (score === null || isNaN(score))) {
+          if (jobReqs.length > 0 && candidateSkills.length > 0) {
+            const matches = jobReqs.filter(req => candidateSkills.some(s => s.includes(req) || req.includes(s)));
+            score = Math.round((matches.length / jobReqs.length) * 100);
+          } else {
+            score = 0;
+          }
+        }
+
+        const getValidUrl = (...urls) => {
+          for (const u of urls) {
+            if (!u) continue;
+            if (u.startsWith('data:') || u.startsWith('http://') || u.startsWith('https://')) return u;
+            if (u.startsWith('/uploads')) {
+              const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+              return `${backendUrl}${u}`;
+            }
+          }
+          return urls.find(u => !!u) || '';
+        };
+
+        const resolvedResumeUrl = getValidUrl(app.resumeUrl, candidateInfo.resumeUrl, candidateInfo.resumeData);
 
         return {
           id: app.id,
@@ -112,7 +137,9 @@ export const HRProvider = ({ children }) => {
                   app.status === 'OFFERED' ? 'Offer' :
                     app.status === 'HIRED' ? 'Hired' :
                       app.status === 'REJECTED' ? 'Rejected' : app.status,
-          match: score,
+          match: isInvalidResume ? null : score,
+          isInvalidResume: isInvalidResume,
+          aiAssessment: aiAssessment,
           appliedDate: app.submittedAt ? formatDate(app.submittedAt) : formatDate(new Date()),
           avatar: candidateInfo.avatarUrl || '',
           expectedSalary: candidateInfo.expectedSalary || '',
@@ -121,7 +148,8 @@ export const HRProvider = ({ children }) => {
           linkedin: candidateInfo.linkedin || '',
           portfolio: candidateInfo.portfolio || '',
           skills: candidateInfo.skills ? candidateInfo.skills.split(',').map(s => s.trim()).filter(Boolean) : [],
-          resumeUrl: getValidUrl(candidateInfo.resumeData, app.resumeUrl, candidateInfo.resumeUrl),
+          resumeUrl: resolvedResumeUrl,
+          resumeData: candidateInfo.resumeData || null,
           coverLetter: app.coverLetter || '',
         };
       });
@@ -135,18 +163,52 @@ export const HRProvider = ({ children }) => {
   const fetchInterviews = useCallback(async () => {
     try {
       const res = await hrAPI.getInterviews();
-      const mapped = (res.data.data || []).map(i => ({
-        ...i,
-        candidate: i.application?.candidate?.user?.email?.split('@')[0]?.toUpperCase() || 'Candidate',
-        role: i.application?.jobPost?.title || 'Job Candidate',
-        interviewer: i.interviewer?.fullName || '',
-        date: i.dateTime ? formatDate(i.dateTime) : formatDate(new Date()),
-        time: i.dateTime ? i.dateTime.split('T')[1]?.slice(0, 5) : '10:00',
-        round: i.feedback ? 'Feedback Stage' : 'Technical Round',
-        link: i.meetingLink || '',
-        status: i.status || 'Scheduled',
-        img: `https://ui-avatars.com/api/?name=${encodeURIComponent(i.application?.candidate?.user?.email?.split('@')[0] || 'Candidate')}&background=random`
-      }));
+      const mapped = (res.data.data || []).map(i => {
+        let rawDateStr = '';
+        let localTimeStr = '10:00';
+        if (i.dateTime) {
+          try {
+            const d = new Date(i.dateTime);
+            if (!isNaN(d.getTime())) {
+              const yyyy = d.getFullYear();
+              const mm = String(d.getMonth() + 1).padStart(2, '0');
+              const dd = String(d.getDate()).padStart(2, '0');
+              rawDateStr = `${yyyy}-${mm}-${dd}`;
+              const hh = String(d.getHours()).padStart(2, '0');
+              const min = String(d.getMinutes()).padStart(2, '0');
+              localTimeStr = `${hh}:${min}`;
+            }
+          } catch (e) {}
+        }
+        if (!rawDateStr && i.date) {
+          rawDateStr = typeof i.date === 'string' ? i.date.slice(0, 10) : '';
+        }
+        if (!localTimeStr && i.time) {
+          localTimeStr = i.time;
+        }
+
+        const normStatus = (i.status === 'SCHEDULED' || i.status === 'Scheduled') ? 'Scheduled' :
+          (i.status === 'COMPLETED' || i.status === 'Completed') ? 'Completed' :
+          (i.status === 'CANCELLED' || i.status === 'Cancelled') ? 'Cancelled' : (i.status || 'Scheduled');
+        const candName = i.application?.candidate?.fullName || i.candidateName || i.candidate || (i.application?.candidate?.user?.email ? i.application.candidate.user.email.split('@')[0] : 'Candidate');
+        
+        return {
+          ...i,
+          candidate: candName,
+          role: i.application?.jobPost?.title || i.role || 'Job Candidate',
+          interviewer: i.interviewer?.fullName || i.interviewerName || 'Hiring Manager',
+          date: rawDateStr || (i.dateTime ? formatDate(i.dateTime) : formatDate(new Date())),
+          displayDate: i.dateTime ? formatDate(i.dateTime) : formatDate(new Date()),
+          rawDate: rawDateStr,
+          dateTime: i.dateTime,
+          time: localTimeStr,
+          round: i.round || (i.feedback ? 'Feedback Stage' : 'Technical Round'),
+          type: i.type || 'Video Call',
+          link: i.meetingLink || i.link || '',
+          status: normStatus,
+          img: `https://ui-avatars.com/api/?name=${encodeURIComponent(candName)}&background=random`
+        };
+      });
       setInterviews(mapped);
     } catch {
       // No mock needed
@@ -506,6 +568,9 @@ export const HRProvider = ({ children }) => {
     try {
       await hrAPI.createOffer(offer);
       await fetchOffers();
+      await fetchApplications();
+      await fetchEmployees();
+      await fetchOnboarding();
       showToast('Offer created successfully');
     } catch {
       setOffers(prev => [{ ...offer, id: `O-${Date.now()}` }, ...prev]);
@@ -517,7 +582,10 @@ export const HRProvider = ({ children }) => {
     try {
       await hrAPI.updateOffer(id, data);
       await fetchOffers();
-      showToast('Offer updated');
+      await fetchApplications();
+      await fetchEmployees();
+      await fetchOnboarding();
+      showToast('Offer updated successfully');
     } catch {
       setOffers(prev => prev.map(o => o.id === id ? { ...o, ...data } : o));
       showToast('Offer updated (demo mode)');
@@ -582,6 +650,7 @@ export const HRProvider = ({ children }) => {
       };
       await hrAPI.scheduleInterview(payload);
       await fetchInterviews();
+      await fetchApplications();
       showToast('Interview scheduled successfully!');
     } catch (err) {
       console.error('Failed to schedule interview:', err);
@@ -592,24 +661,28 @@ export const HRProvider = ({ children }) => {
 
   const updateInterview = async (id, data) => {
     try {
-      const payload = {};
-      if (data.date) payload.date = data.date;
-      if (data.time) payload.time = data.time;
-      if (data.dateTime) payload.dateTime = data.dateTime;
-      if (data.link || data.meetingLink) payload.meetingLink = data.link || data.meetingLink;
-      if (data.round) payload.round = data.round;
-      if (data.type) payload.type = data.type;
-      if (data.status) payload.status = data.status;
-      if (data.interviewerId) payload.interviewerId = data.interviewerId;
-      else if (data.interviewer) payload.interviewerId = data.interviewer;
+      const payload = {
+        date: data.date,
+        time: data.time,
+        dateTime: data.dateTime,
+        meetingLink: data.link || data.meetingLink || '',
+        round: data.round,
+        type: data.type,
+        status: data.status,
+        interviewerId: data.interviewerId || (data.interviewer && !data.interviewer.includes(' ') ? data.interviewer : undefined),
+        candidate: data.candidate,
+        role: data.role
+      };
 
       await hrAPI.updateInterview(id, payload);
       await fetchInterviews();
-      showToast('Interview updated');
+      await fetchApplications();
+      await fetchOffers();
+      showToast('Interview updated successfully!');
     } catch (err) {
       console.error('Failed to update interview:', err);
       setInterviews(prev => prev.map(i => i.id === id ? { ...i, ...data } : i));
-      showToast('Interview updated (demo mode)');
+      showToast('Interview updated');
     }
   };
 
@@ -686,6 +759,36 @@ export const HRProvider = ({ children }) => {
     }
   };
 
+  const refetch = useCallback(async () => {
+    try {
+      await Promise.allSettled([
+        fetchJobs(),
+        fetchApplications(),
+        fetchInterviews(),
+        fetchEmployees(),
+        fetchPendingLeaves(),
+        fetchTickets(),
+        fetchOffers(),
+        fetchOnboarding(),
+        fetchExits(),
+        fetchIncrementRequests(),
+      ]);
+    } catch (err) {
+      console.error('Refetch error:', err);
+    }
+  }, [fetchJobs, fetchApplications, fetchInterviews, fetchEmployees, fetchPendingLeaves, fetchTickets, fetchOffers, fetchOnboarding, fetchExits, fetchIncrementRequests]);
+
+  refetch.fetchJobs = fetchJobs;
+  refetch.fetchApplications = fetchApplications;
+  refetch.fetchInterviews = fetchInterviews;
+  refetch.fetchEmployees = fetchEmployees;
+  refetch.fetchPendingLeaves = fetchPendingLeaves;
+  refetch.fetchTickets = fetchTickets;
+  refetch.fetchOffers = fetchOffers;
+  refetch.fetchOnboarding = fetchOnboarding;
+  refetch.fetchExits = fetchExits;
+  refetch.fetchIncrementRequests = fetchIncrementRequests;
+
   return (
     <HRContext.Provider value={{
       toast,
@@ -704,7 +807,7 @@ export const HRProvider = ({ children }) => {
       offers, addOffer, updateOffer, deleteOffer,
       loading,
       showToast,
-      refetch: { fetchJobs, fetchApplications, fetchInterviews, fetchEmployees, fetchPendingLeaves, fetchTickets, fetchOffers, fetchOnboarding, fetchExits, fetchIncrementRequests },
+      refetch,
     }}>
       {children}
     </HRContext.Provider>

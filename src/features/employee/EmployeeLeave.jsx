@@ -325,32 +325,16 @@ const EmployeeLeave = () => {
                                )}
                                <div className="flex items-center justify-end gap-2">
                                   {item.status === 'Pending' && (
-                                    <button 
-                                      onClick={async () => {
-                                        try {
-                                          setIsCancellingId(item.id);
-                                          await cancelLeave(item.id);
-                                        } finally {
-                                          setIsCancellingId(null);
-                                        }
-                                      }} 
-                                      disabled={isCancellingId === item.id}
-                                      className="text-[9px] font-bold text-rose-500 font-bold hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                      {isCancellingId === item.id ? 'Cancelling...' : 'Cancel'}
-                                    </button>
+                                    <PermissionGate module="leave" action="delete">
+                                      <button 
+                                        onClick={() => handleCancelLeave(item.id)} 
+                                        disabled={isCancellingId === item.id}
+                                        className="text-[9px] font-bold text-rose-500 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        {isCancellingId === item.id ? 'Cancelling...' : 'Cancel'}
+                                      </button>
+                                    </PermissionGate>
                                   )}
-                                 {item.status === 'Pending' && (
-                                   <PermissionGate module="leave" action="delete">
-                                   <button 
-                                     onClick={() => handleCancelLeave(item.id)} 
-                                     disabled={isCancellingId === item.id}
-                                     className="text-[9px] font-bold text-rose-500 font-bold hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                                   >
-                                     {isCancellingId === item.id ? 'Cancelling...' : 'Cancel'}
-                                   </button>
-                                   </PermissionGate>
-                                 )}
                                  <p className="text-[10px] font-black text-primary-600 font-bold">{item.managerComment ? 'Reviewed' : 'Awaiting Review'}</p>
                               </div>
                            </div>

@@ -4,13 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LifeBuoy, Plus, Search, Filter, Clock, CheckCircle2, AlertCircle, X, MessageSquare, 
   User, Paperclip, Send, ChevronRight, ShieldCheck, Monitor, CreditCard, Zap, Calendar, 
-  MessageCircle, Hash, ArrowRight, Star, Trash, Sparkles, Copy, Check, RefreshCw, HelpCircle, FileText, Bot
+  MessageCircle, Hash, ArrowRight, Star, Trash, Sparkles, Copy, Check, RefreshCw, HelpCircle, FileText, Bot,
+  Headphones, CheckCheck, Download, Building2
 } from 'lucide-react';
 import { getBackendURL } from '../../utils/apiService';
 import { cn } from '../../utils/cn';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import { useEmployee } from '../../context/EmployeeContext';
 import CenterModal from '../../shared/components/layout/CenterModal';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 // Simple Markdown Formatter Helper
 const PolicyMarkdown = ({ content }) => {
@@ -58,7 +60,7 @@ const renderFormattedText = (text) => {
 const EmployeeHelpDesk = () => {
   const { profile, tickets, createTicket, replyTicket, deleteTicketMessage, showToast, loading, error, refetchAll } = useEmployee();
   const { formatDate } = useDateFormat();
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeTab, setActiveTab] = usePersistedTab('emp_helpdesk', 'All');
   const [searchTerm, setSearchTerm] = useState('');
   const [isNewTicketModalOpen, setIsNewTicketModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -106,6 +108,58 @@ const EmployeeHelpDesk = () => {
       if (updated) setSelectedTicket(updated);
     }
   }, [tickets]);
+
+  const ticketChatEndRef = useRef(null);
+
+  useEffect(() => {
+    if (selectedTicket) {
+      const timer = setTimeout(() => {
+        ticketChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedTicket, selectedTicket?.messages]);
+
+  const checkIsMe = (sender) => {
+    if (!sender) return false;
+    if (typeof sender === 'string') {
+      const s = sender.toLowerCase().trim();
+      const myEmail = (profile?.email || '').toLowerCase().trim();
+      const myName = (profile?.fullName || '').toLowerCase().trim();
+      if (s === myEmail || s === myName || s === 'you' || s === 'employee') return true;
+      if (['hr', 'admin', 'superadmin', 'support', 'support agent', 'manager'].includes(s)) return false;
+      return Boolean((myEmail && s.includes(myEmail)) || (myName && s.includes(myName)));
+    }
+    if (typeof sender === 'object') {
+      if (profile?.id && sender.id === profile.id) return true;
+      if (profile?.userId && (sender.userId === profile.userId || sender.id === profile.userId)) return true;
+      if (profile?.email && sender.email === profile.email) return true;
+      if (sender.role === 'EMPLOYEE' && !sender.role?.includes('HR')) return true;
+    }
+    return false;
+  };
+
+  const formatMessageTime = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
+
+  const handleAttachmentClick = (url, name = 'attachment') => {
+    if (!url) return;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Scroll to bottom of AI chat
   useEffect(() => {
@@ -527,65 +581,199 @@ const EmployeeHelpDesk = () => {
          </form>
       </CenterModal>
 
-      {/* Ticket Details Modal */}
-      <CenterModal isOpen={!!selectedTicket} onClose={() => setSelectedTicket(null)} title={selectedTicket ? `Ticket ${selectedTicket.id}` : ''}>
+      {/* WhatsApp / Messenger Style Ticket Chat Modal */}
+      <CenterModal 
+        isOpen={!!selectedTicket} 
+        onClose={() => setSelectedTicket(null)} 
+        maxWidth="max-w-2xl"
+        showClose={false}
+      >
         {selectedTicket && (
-          <div className="p-8 space-y-6 text-left max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <div>
-                <h3 className="text-lg font-black text-slate-900">{selectedTicket.subject}</h3>
-                <p className="text-xs font-bold text-slate-400 mt-1">{selectedTicket.category} • {formatDate(selectedTicket.createdAt)}</p>
-              </div>
-              <span className={cn(
-                "px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest border",
-                getFriendlyStatus(selectedTicket.status) === 'Resolved' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"
-              )}>
-                {getFriendlyStatus(selectedTicket.status)}
-              </span>
-            </div>
-
-            <div className="bg-slate-50 p-5 rounded-2xl space-y-2">
-              <p className="text-[10px] font-black text-slate-400 uppercase">Original Description</p>
-              <p className="text-xs font-medium text-slate-700 leading-relaxed">{selectedTicket.description}</p>
-            </div>
-
-            {/* Conversation Messages */}
-            {selectedTicket.messages && selectedTicket.messages.length > 0 && (
-              <div className="space-y-4 pt-2">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Conversation Log</h4>
-                {selectedTicket.messages.map((msg, i) => (
-                  <div key={i} className="p-4 bg-white border border-slate-100 rounded-2xl space-y-1">
-                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
-                      <span>{getSenderName(msg.sender)}</span>
-                      <span>{formatDate(msg.timestamp || msg.createdAt)}</span>
-                    </div>
-                    <p className="text-xs font-medium text-slate-800">{getMessageText(msg)}</p>
+          <div className="flex flex-col h-[75vh] max-h-[640px] text-left">
+            {/* WhatsApp Messenger Header */}
+            <div className="px-5 py-3.5 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white font-bold shadow-md ring-2 ring-indigo-400/20">
+                    <Headphones size={20} />
                   </div>
-                ))}
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full" title="Online" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-bold text-white truncate max-w-[280px] sm:max-w-[360px]">
+                      {selectedTicket.subject}
+                    </h3>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0",
+                      getFriendlyStatus(selectedTicket.status) === 'Resolved' 
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" 
+                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    )}>
+                      {getFriendlyStatus(selectedTicket.status)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 font-medium truncate mt-0.5">
+                    HR & Support Desk • {selectedTicket.category || 'General'}
+                  </p>
+                </div>
               </div>
-            )}
 
-            {/* Reply Form */}
-            <form onSubmit={handleReply} className="space-y-4 pt-4 border-t border-slate-100">
-              <textarea
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Type your response..."
-                rows="3"
-                className="input-field p-4 bg-slate-50 border-transparent font-medium resize-none text-xs"
-              />
-              <div className="flex items-center justify-between">
-                <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5">
-                  <Paperclip size={14} />
-                  <span>{attachmentName || 'Attach file'}</span>
-                </button>
-                <button type="submit" className="btn-primary px-6 py-2 text-xs font-bold flex items-center gap-2">
-                  <Send size={14} />
-                  <span>Send Reply</span>
-                </button>
+              <button 
+                onClick={() => setSelectedTicket(null)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all"
+                title="Close chat"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Chat Body - WhatsApp Style Bubble Scroll Area */}
+            <div className="flex-1 p-4 sm:p-5 overflow-y-auto bg-slate-100/80 dark:bg-slate-950/70 space-y-3">
+              {/* Date Badge */}
+              <div className="flex justify-center my-1">
+                <span className="px-3 py-1 bg-white dark:bg-slate-800/90 text-slate-500 dark:text-slate-400 text-[10px] font-bold rounded-full shadow-xs border border-slate-200/60 dark:border-slate-700/60">
+                  {formatDate(selectedTicket.createdAt) || 'Today'}
+                </span>
               </div>
-            </form>
+
+              {/* Initial Message (Description) rendered as first chat bubble from employee */}
+              {selectedTicket.description && (
+                <div className="flex justify-end">
+                  <div className="max-w-[82%] sm:max-w-[75%] bg-indigo-600 text-white rounded-2xl rounded-tr-xs px-4 py-2.5 shadow-sm space-y-1.5 relative group">
+                    <p className="text-[13px] leading-relaxed break-words whitespace-pre-wrap font-normal">
+                      {selectedTicket.description}
+                    </p>
+                    {selectedTicket.attachmentUrl && (
+                      <div 
+                        onClick={() => handleAttachmentClick(selectedTicket.attachmentUrl, 'initial_attachment')}
+                        className="flex items-center gap-2 p-2 bg-black/15 hover:bg-black/25 rounded-xl text-xs cursor-pointer transition-colors"
+                      >
+                        <Paperclip size={14} className="shrink-0" />
+                        <span className="truncate underline font-medium">View Attachment</span>
+                        <Download size={13} className="ml-auto shrink-0" />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-end gap-1 text-[10px] text-indigo-200 mt-1">
+                      <span>{formatMessageTime(selectedTicket.createdAt)}</span>
+                      <CheckCheck size={14} className="text-indigo-200" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Subsequent Messages */}
+              {selectedTicket.messages && selectedTicket.messages.map((msg, i) => {
+                const isMe = checkIsMe(msg.sender);
+                const senderLabel = isMe ? 'You' : getSenderName(msg.sender);
+                const msgTime = formatMessageTime(msg.timestamp || msg.createdAt);
+                const text = getMessageText(msg);
+
+                return (
+                  <div key={msg.id || i} className={cn("flex items-end gap-2", isMe ? "justify-end" : "justify-start")}>
+                    {!isMe && (
+                      <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold text-[10px] flex items-center justify-center shrink-0 mb-0.5 ring-1 ring-indigo-200 dark:ring-indigo-800">
+                        {senderLabel.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+
+                    <div className={cn(
+                      "max-w-[82%] sm:max-w-[75%] px-4 py-2.5 rounded-2xl shadow-sm space-y-1 relative group",
+                      isMe 
+                        ? "bg-indigo-600 text-white rounded-tr-xs" 
+                        : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200/80 dark:border-slate-700/80 rounded-tl-xs"
+                    )}>
+                      {!isMe && (
+                        <p className="text-[10.5px] font-bold text-indigo-600 dark:text-indigo-400 leading-none mb-1">
+                          {senderLabel}
+                        </p>
+                      )}
+
+                      <p className="text-[13px] leading-relaxed break-words whitespace-pre-wrap font-normal">
+                        {text}
+                      </p>
+
+                      {msg.attachmentUrl && (
+                        <div 
+                          onClick={() => handleAttachmentClick(msg.attachmentUrl, `attachment_${i}`)}
+                          className={cn(
+                            "flex items-center gap-2 p-2 rounded-xl text-xs cursor-pointer transition-colors mt-1.5",
+                            isMe ? "bg-black/15 hover:bg-black/25 text-white" : "bg-slate-100 dark:bg-slate-750 hover:bg-slate-200 text-slate-700 dark:text-slate-200"
+                          )}
+                        >
+                          <Paperclip size={14} className="shrink-0" />
+                          <span className="truncate underline font-medium">Attachment</span>
+                          <Download size={13} className="ml-auto shrink-0" />
+                        </div>
+                      )}
+
+                      <div className={cn(
+                        "flex items-center justify-end gap-1 text-[10px] mt-1",
+                        isMe ? "text-indigo-200" : "text-slate-400 dark:text-slate-500"
+                      )}>
+                        <span>{msgTime}</span>
+                        {isMe && <CheckCheck size={14} className="text-indigo-200" />}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div ref={ticketChatEndRef} />
+            </div>
+
+            {/* Fixed Chat Input Composer */}
+            <div className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 sm:p-4 shrink-0">
+              {/* Attachment Preview Chip */}
+              {attachmentName && (
+                <div className="mb-2 inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-semibold">
+                  <Paperclip size={13} />
+                  <span className="max-w-[200px] truncate">{attachmentName}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => { setAttachmentName(''); setAttachmentBase64(null); }}
+                    className="p-0.5 hover:bg-indigo-100 dark:hover:bg-indigo-900 rounded-full"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={handleReply} className="flex items-center gap-2">
+                <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
+                <button 
+                  type="button" 
+                  onClick={() => fileInputRef.current?.click()} 
+                  className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-xl transition-all shrink-0"
+                  title="Attach file"
+                >
+                  <Paperclip size={18} />
+                </button>
+
+                <input
+                  type="text"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleReply(e);
+                    }
+                  }}
+                  placeholder="Type a message... (Press Enter to send)"
+                  className="flex-1 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-medium text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                />
+
+                <button 
+                  type="submit" 
+                  disabled={!replyText.trim() && !attachmentBase64}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:hover:bg-indigo-600 text-white p-2.5 sm:px-4 sm:py-2.5 rounded-2xl text-xs font-bold shadow-md shadow-indigo-500/20 active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
+                >
+                  <Send size={15} />
+                  <span className="hidden sm:inline">Send</span>
+                </button>
+              </form>
+            </div>
           </div>
         )}
       </CenterModal>

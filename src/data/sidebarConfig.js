@@ -120,7 +120,6 @@ export const sidebarConfig = {
     { label: 'Holidays', icon: CalendarDays, path: '/admin/holidays', permission: 'holidays' },
     { label: 'Benefits Config', icon: Gift, path: '/admin/benefits', permission: 'benefits_config' },
     { label: 'Compliance', icon: Scale, path: '/admin/compliance', permission: 'compliance' },
-    { label: 'Integrations', icon: Plug, path: '/admin/integrations', permission: 'integrations' },
     { label: 'Billing', icon: Receipt, path: '/admin/billing', permission: 'billing' },
     { label: 'Resignations', icon: UserMinus, path: '/admin/resignations', permission: 'resignations' },
     { label: 'Reimbursements', icon: Receipt, path: '/admin/reimbursements', permission: 'reimbursements' },

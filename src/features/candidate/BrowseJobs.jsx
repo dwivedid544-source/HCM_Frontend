@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
  Search, MapPin, Briefcase, DollarSign, Clock, Filter, RotateCcw, Bookmark, 
  ChevronRight, X, Users, GraduationCap, Calendar, Layers, ArrowRight, CheckCircle2,
- BookmarkCheck, Info, Send, FileText, Globe, Zap, ChevronDown
+ BookmarkCheck, Info, Send, FileText, Globe, Zap, ChevronDown, Loader2
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useCandidate } from '../../context/CandidateContext';
@@ -92,6 +92,7 @@ const BrowseJobs = () => {
   const [cameFromDetails, setCameFromDetails] = useState(false);
   const [sortBy, setSortBy] = useState('Newest');
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleApplyClick = (job, fromDetails) => {
     setSelectedJob(job);
@@ -148,8 +149,10 @@ const BrowseJobs = () => {
     });
   }, [jobs.allJobs, searchTerm, filters, sortBy, showSavedOnly, savedIndices]);
 
-  const handleApplySubmit = (e) => {
+  const handleApplySubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting || !selectedJob) return;
+
     const formData = new FormData(e.target);
     const file = fileInputRef.current?.files[0];
 
@@ -158,34 +161,41 @@ const BrowseJobs = () => {
       return;
     }
 
-    const submitApp = (base64Data = null) => {
-      applyForJob(selectedJob.id, {
+    setIsSubmitting(true);
+
+    const readFileAsBase64 = (f) => new Promise((resolve) => {
+      if (!f) return resolve(null);
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(f);
+    });
+
+    try {
+      const base64Data = file ? await readFileAsBase64(file) : null;
+      const res = await applyForJob(selectedJob.id, {
         fullName: formData.get('fullName') || profile?.fullName || '',
         email: formData.get('email') || profile?.email || '',
-        phone: formData.get('phone') || profile?.phone || '',
+        phone: applicationPhone || formData.get('phone') || profile?.phone || '',
         location: formData.get('location') || profile?.location || '',
         linkedin: formData.get('linkedin') || profile?.linkedin || '',
         portfolio: formData.get('portfolio') || profile?.portfolio || '',
         skills: Array.isArray(profile?.skills) ? profile.skills.join(', ') : (profile?.skills || ''),
-        expectedSalary: formData.get('expectedSalary'),
-        availability: formData.get('availability'),
-        coverLetter: formData.get('coverLetter'),
-        resumeUrl: file ? file.name : selectedResume,
+        expectedSalary: formData.get('expectedSalary') || '',
+        availability: formData.get('availability') || 'Immediate',
+        coverLetter: formData.get('coverLetter') || '',
+        resumeUrl: file ? file.name : (selectedResume || profile?.resumeUrl || 'resume.pdf'),
         resumeBase64: base64Data
       });
-      setIsApplyModalOpen(false);
-      setSelectedJob(null);
-      showToast(`Application for ${selectedJob.title} sent!`);
-    };
 
-    if (file) {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        submitApp(reader.result);
-      };
-    } else {
-      submitApp(null);
+      if (res?.success) {
+        setIsApplyModalOpen(false);
+        setSelectedJob(null);
+      }
+    } catch (err) {
+      console.error('Job application submission error:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -718,15 +728,27 @@ const BrowseJobs = () => {
               <button 
                 type="button" 
                 onClick={() => setIsApplyModalOpen(false)} 
-                className="btn-secondary flex-1 h-12 text-sm font-bold"
+                disabled={isSubmitting}
+                className="btn-secondary flex-1 h-12 text-sm font-bold disabled:opacity-50"
               >
                 Cancel
               </button>
               <button 
                 type="submit"
-                className="btn-primary flex-1 h-12 flex items-center justify-center gap-2 text-sm font-bold"
+                disabled={isSubmitting}
+                className="btn-primary flex-1 h-12 flex items-center justify-center gap-2 text-sm font-bold shadow-lg shadow-primary-200 dark:shadow-none disabled:opacity-60"
               >
-                Submit Application <ArrowRight size={16} />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Submit Application</span>
+                    <ArrowRight size={16} />
+                  </>
+                )}
               </button>
             </div>
           </form>

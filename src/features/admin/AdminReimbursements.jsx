@@ -9,6 +9,7 @@ import { reimbursementAPI } from '../../utils/apiService';
 import DatePicker from '../../shared/components/common/DatePicker';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import toast from 'react-hot-toast';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const AdminReimbursements = () => {
   const { formatCurrency } = useCurrency();
@@ -16,7 +17,7 @@ const AdminReimbursements = () => {
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('Pending Approval');
+  const [activeTab, setActiveTab] = usePersistedTab('admin_reimbursements', 'Pending Approval');
   
   // Modals
   const [selectedClaim, setSelectedClaim] = useState(null);

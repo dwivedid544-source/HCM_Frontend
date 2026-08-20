@@ -9,13 +9,14 @@ import {
 import { cn } from '../../utils/cn';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import { useHR } from '../../context/HRContext';
-import { authAPI } from '../../utils/apiService';
+import { authAPI, adminAPI } from '../../utils/apiService';
 import PermissionGate from '../../shared/components/common/PermissionGate';
 import DatePicker from '../../shared/components/common/DatePicker';
 
 import Button from '../../shared/components/ui/Button';
 import PageHeader from '../../shared/components/ui/PageHeader';
 import StatCard from '../../shared/components/ui/StatCard';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const Onboarding = () => {
    const { formatDate } = useDateFormat();
@@ -23,10 +24,12 @@ const Onboarding = () => {
 
    const [selectedHire, setSelectedHire] = useState(null);
    const [isModalOpen, setIsModalOpen] = useState(false);
+   const [activeTab, setActiveTab] = usePersistedTab('hr_onboarding', 'all');
    const [searchTerm, setSearchTerm] = useState('');
    const [filterStatus, setFilterStatus] = useState('');
+   const [isExporting, setIsExporting] = useState(false);
 
-   const [departments, setDepartments] = useState([]);
+   const [selectedCandidates, setSelectedCandidates] = useState([]);
    const [showPromoteForm, setShowPromoteForm] = useState(false);
    const [promoteData, setPromoteData] = useState({
       employeeId: '',
@@ -34,17 +37,12 @@ const Onboarding = () => {
       managerId: '',
       joiningDate: new Date().toISOString().split('T')[0]
    });
+   const [departments, setDepartments] = useState([]);
 
    useEffect(() => {
       if (selectedHire) {
-         setPromoteData(prev => ({
-            ...prev,
-            employeeId: `EMP-${selectedHire.id.substring(0, 4).toUpperCase()}`
-         }));
-      } else {
-         setShowPromoteForm(false);
          setPromoteData({
-            employeeId: '',
+            employeeId: `EMP-${selectedHire.id.slice(0, 8).toUpperCase()}`,
             departmentId: '',
             managerId: '',
             joiningDate: new Date().toISOString().split('T')[0]
@@ -55,14 +53,11 @@ const Onboarding = () => {
    useEffect(() => {
       const fetchDepts = async () => {
          try {
-            const res = await authAPI.get('/departments');
-            if (res.data) setDepartments(res.data);
+            const res = await adminAPI.getDepartments();
+            if (res.data?.data) setDepartments(res.data.data);
+            else if (res.data && Array.isArray(res.data)) setDepartments(res.data);
          } catch (e) {
-            setDepartments([
-               { id: '1', name: 'Engineering' },
-               { id: '2', name: 'Sales' },
-               { id: '3', name: 'Product' }
-            ]);
+            setDepartments([]);
          }
       };
       fetchDepts();
@@ -107,7 +102,7 @@ const Onboarding = () => {
       }
 
       const res = await promoteCandidate(selectedHire.id, promoteData);
-      if (res?.success || res?.message === 'Employee ID is already in use.') {
+      if (res?.success || res?.message === 'Candidate promoted to Employee successfully.' || res?.message === 'Employee ID is already in use.') {
          setShowPromoteForm(false);
          setPromoteData({ employeeId: '', departmentId: '', managerId: '', joiningDate: new Date().toISOString().split('T')[0] });
          setSelectedHire(null);

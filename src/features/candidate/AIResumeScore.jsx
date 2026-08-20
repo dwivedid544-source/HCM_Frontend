@@ -8,6 +8,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../utils/cn';
 import { useCandidate } from '../../context/CandidateContext';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 // Hardcoded profiles for "Industry Profile" tab
 const industryProfiles = {
@@ -32,7 +33,7 @@ const AIResumeScore = () => {
   const [viewState, setViewState] = useState('input');
   
   // Input Selection
-  const [activeTab, setActiveTab] = useState('jd'); // 'jd' or 'profile'
+  const [activeTab, setActiveTab] = usePersistedTab('cand_airesume', 'jd'); // 'jd' or 'profile'
   const [jobDescription, setJobDescription] = useState('');
   const [selectedProfile, setSelectedProfile] = useState("Frontend Engineer");
   const [resumeSource, setResumeSource] = useState('builder'); // 'builder' or 'uploaded'

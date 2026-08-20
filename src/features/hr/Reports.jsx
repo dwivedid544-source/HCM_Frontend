@@ -8,12 +8,13 @@ import {
 import { cn } from '../../utils/cn';
 import { useHR } from '../../context/HRContext';
 import { useCurrency } from '../../hooks/useCurrency';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const Reports = () => {
   const { formatCurrency, getSymbol, getIcon, masterCurrency } = useCurrency();
 
   const { reports, fetchReports, showToast } = useHR();
-  const [activeTab, setActiveTab] = useState('hiring');
+  const [activeTab, setActiveTab] = usePersistedTab('hr_reports', 'hiring');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isInsightModalOpen, setIsInsightModalOpen] = useState(false);
   const [performanceView, setPerformanceView] = useState('weekly'); // 'daily' or 'weekly'

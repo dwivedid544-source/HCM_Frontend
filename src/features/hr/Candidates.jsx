@@ -15,6 +15,7 @@ import { useAdmin } from '../../context/AdminContext';
 import ConfirmDialog from '../../shared/components/admin/ConfirmDialog';
 import PermissionGate from '../../shared/components/common/PermissionGate';
 import ImportModal from '../../shared/components/import/ImportModal';
+import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const Candidates = () => {
   const { candidates, addCandidate, updateCandidate, moveCandidateStage, deleteCandidate, getCandidateAiSummary, showToast } = useHR();
@@ -24,6 +25,7 @@ const Candidates = () => {
   const navigate = useNavigate();
 
   const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [previewingResume, setPreviewingResume] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState(null);
@@ -31,7 +33,7 @@ const Candidates = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredMatch, setFilteredMatch] = useState('');
-  const [filteredStatus, setFilteredStatus] = useState('');
+  const [filteredStatus, setFilteredStatus] = usePersistedTab('hr_cand_status', '', 'status');
 
   const [candidateSummaryText, setCandidateSummaryText] = useState('');
   const [isEditedSummary, setIsEditedSummary] = useState(false);
@@ -102,7 +104,6 @@ const Candidates = () => {
       window.history.replaceState({}, document.title);
     }
   }, [location, candidates]);
-  const [previewingResume, setPreviewingResume] = useState(null);
 
   const stats = [
     { label: 'Total Candidates', value: candidates.length, icon: FileText, bg: 'bg-blue-50 dark:bg-blue-950/20', color: 'text-blue-600 dark:text-blue-450' },
@@ -320,14 +321,23 @@ const Candidates = () => {
                       </div>
                     </td>
                     <td className="hcm-td">
-                      <div className="flex flex-col items-center gap-1.5">
-                         <span className={cn("text-[10px] font-extrabold uppercase tracking-widest", cand.match > 90 ? "text-emerald-500 dark:text-emerald-450" : cand.match >= 75 ? "text-primary-500 dark:text-primary-400" : "text-amber-500 dark:text-amber-450")}>
-                           {cand.match}% Match
-                         </span>
-                         <div className="w-20 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
-                            <div className={cn("h-full rounded-full transition-all", cand.match > 90 ? "bg-emerald-50 dark:bg-emerald-400" : cand.match >= 75 ? "bg-primary-500 dark:bg-primary-400" : "bg-amber-500 dark:bg-amber-400")} style={{ width: `${cand.match}%` }} />
-                         </div>
-                      </div>
+                      {cand.isInvalidResume || cand.match === null ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/40">
+                            Invalid Resume
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-medium">Non-CV document</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5">
+                           <span className={cn("text-[10px] font-extrabold uppercase tracking-widest", cand.match > 90 ? "text-emerald-500 dark:text-emerald-450" : cand.match >= 75 ? "text-primary-500 dark:text-primary-400" : "text-amber-500 dark:text-amber-450")}>
+                             {cand.match}% Match
+                           </span>
+                           <div className="w-20 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
+                              <div className={cn("h-full rounded-full transition-all", cand.match > 90 ? "bg-emerald-50 dark:bg-emerald-400" : cand.match >= 75 ? "bg-primary-500 dark:bg-primary-400" : "bg-amber-500 dark:bg-amber-400")} style={{ width: `${cand.match}%` }} />
+                           </div>
+                        </div>
+                      )}
                     </td>
                     <td className="hcm-td">
                       <span className={cn("px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border", getStatusStyle(cand.stage))}>
@@ -368,14 +378,9 @@ const Candidates = () => {
 
       <AnimatePresence>
         {selectedCandidate && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedCandidate(null)} className="absolute inset-0 bg-slate-900/50 dark:bg-slate-950/70" />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            >
+          <div className="fixed inset-0 z-[120] flex items-center justify-end">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedCandidate(null)} className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60" />
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="relative w-full max-w-2xl h-full bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-100 dark:border-slate-800 flex flex-col z-10">
                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/20 shrink-0">
                   <div className="flex items-center gap-4">
                      <img src={selectedCandidate.img || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedCandidate.name)}&background=random`} alt={selectedCandidate.name} className="w-12 h-12 rounded-2xl object-cover ring-4 ring-white dark:ring-slate-800 shadow-xl" />
@@ -400,11 +405,22 @@ const Candidates = () => {
 
                 <div className="flex-1 overflow-y-auto p-8 space-y-10 bg-white dark:bg-slate-900">
                   <div className="grid grid-cols-2 gap-6">
-                     <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-bold mb-1">AI Match Score</p>
+                     <div className={cn("p-4 rounded-2xl border", (selectedCandidate.isInvalidResume || selectedCandidate.match === null) ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/30" : "bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800")}>
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-bold mb-1">AI ATS Match</p>
                         <div className="flex items-end gap-2">
-                           <span className={cn("text-3xl font-extrabold", selectedCandidate.match > 90 ? "text-emerald-600 dark:text-emerald-450" : "text-primary-600 dark:text-primary-400")}>{selectedCandidate.match || 80}%</span>
-                           {(selectedCandidate.match > 90 || !selectedCandidate.match) && <span className="text-xs font-bold text-emerald-500 dark:text-emerald-400 mb-1 flex items-center gap-0.5"><Sparkles size={12} /> Elite Match</span>}
+                           {(selectedCandidate.isInvalidResume || selectedCandidate.match === null) ? (
+                              <div className="flex flex-col">
+                                 <span className="text-sm font-extrabold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                                    <AlertCircle size={16} /> Invalid Resume
+                                 </span>
+                                 <span className="text-[10px] text-slate-400 font-medium mt-0.5">Non-CV document detected</span>
+                              </div>
+                           ) : (
+                              <>
+                                 <span className={cn("text-3xl font-extrabold", selectedCandidate.match >= 80 ? "text-emerald-600 dark:text-emerald-450" : "text-primary-600 dark:text-primary-400")}>{selectedCandidate.match}%</span>
+                                 {selectedCandidate.match >= 85 && <span className="text-xs font-bold text-emerald-500 dark:text-emerald-450 mb-1 flex items-center gap-0.5"><Sparkles size={12} /> High Match</span>}
+                              </>
+                           )}
                         </div>
                      </div>
                      <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -494,12 +510,73 @@ const Candidates = () => {
                      </div>
                   </section>
 
+                  {/* Candidate Resume & Attached Documents */}
+                  <section className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                     <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-bold text-slate-450 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                           <FileText size={14} className="text-primary-500" />
+                           Candidate Resume & Documents
+                        </h3>
+                        {selectedCandidate.resumeUrl && (
+                           <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-900/40 flex items-center gap-1">
+                              <CheckCircle2 size={11} /> File Attached
+                           </span>
+                        )}
+                     </div>
+
+                     {selectedCandidate.resumeUrl ? (
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                           <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-primary-100 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
+                                 <FileText size={20} />
+                              </div>
+                              <div className="min-w-0">
+                                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[220px]">
+                                    {selectedCandidate.resumeUrl.includes('/uploads/') ? selectedCandidate.resumeUrl.split('/').pop() : `${selectedCandidate.name.replace(/\s+/g, '_')}_Resume.pdf`}
+                                 </p>
+                                 <p className="text-[10px] text-slate-400">PDF / Document • Verified Storage</p>
+                              </div>
+                           </div>
+
+                           <div className="flex items-center gap-2 w-full sm:w-auto">
+                              <button
+                                 onClick={() => setPreviewingResume(selectedCandidate)}
+                                 className="flex-1 sm:flex-none btn-secondary py-2 px-3.5 text-xs font-bold flex items-center justify-center gap-1.5"
+                              >
+                                 <Eye size={14} />
+                                 <span>View Resume</span>
+                              </button>
+                              <button
+                                 onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = selectedCandidate.resumeUrl;
+                                    link.download = `${selectedCandidate.name.replace(/\s+/g, '_')}_Resume.pdf`;
+                                    link.target = '_blank';
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    showToast('Resume download initiated', 'success');
+                                 }}
+                                 className="flex-1 sm:flex-none btn-primary py-2 px-3.5 text-xs font-bold flex items-center justify-center gap-1.5"
+                              >
+                                 <Download size={14} />
+                                 <span>Download</span>
+                              </button>
+                           </div>
+                        </div>
+                     ) : (
+                        <div className="p-4 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 text-xs">
+                           No resume document uploaded for this applicant.
+                        </div>
+                     )}
+                  </section>
+
                   {/* AI Generated Summary Section */}
                   <section className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                      <div className="flex items-center justify-between">
                         <h3 className="text-xs font-bold text-slate-450 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
                            <Sparkles size={14} className="text-indigo-500" />
-                           AI Candidate Summary
+                           AI Candidate Summary & Assessment
                         </h3>
                         <button
                            onClick={() => handleGenerateSummary(false)}
@@ -513,7 +590,7 @@ const Candidates = () => {
                      {aiSummaryError && (
                         <div className="p-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-lg text-xs font-bold flex items-center gap-2">
                            <AlertCircle size={14} />
-                           Failed to connect to AI Service. Please ensure the AI server is running on port 5001.
+                           Failed to connect to AI Service. Please ensure the AI server is running on port 4000.
                         </div>
                      )}
                      <textarea
@@ -529,7 +606,7 @@ const Candidates = () => {
 
                   {selectedCandidate.coverLetter && (
                      <section className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <h3 className="text-xs font-bold text-slate-450 dark:text-slate-500 uppercase tracking-[0.2em]">Cover Letter / Statement</h3>
+                        <h3 className="text-xs font-bold text-slate-450 dark:text-slate-500 uppercase tracking-[0.2em]">Application Details & Notes</h3>
                         <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/20 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 whitespace-pre-line">
                            {selectedCandidate.coverLetter}
                         </p>
@@ -562,56 +639,58 @@ const Candidates = () => {
                  <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
                     <div className="flex items-center gap-4">
                        <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-950/20 flex items-center justify-center text-primary-600 dark:text-primary-400">
-                          <Users size={22} />
+                          <FileText size={22} />
                        </div>
                         <div>
-                           <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">{previewingResume.resumeUrl || `${(previewingResume.name || 'Candidate').replace(/\s+/g, '_')}_Resume.pdf`}</h2>
-                           <p className="text-xs font-bold text-slate-400 dark:text-slate-500 font-bold">Candidate Resume • AI Analyzed</p>
+                           <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">
+                              {previewingResume.name ? `${previewingResume.name}'s Resume` : 'Candidate Resume'}
+                           </h2>
+                           <p className="text-xs font-bold text-slate-400 dark:text-slate-500 font-bold">
+                              AI Analyzed • Match Score: {previewingResume.match || 0}%
+                           </p>
                         </div>
                      </div>
                      <div className="flex items-center gap-3 text-slate-500">
-                        <button onClick={() => {
-                           const resolvedUrl = (previewingResume.resumeUrl && (previewingResume.resumeUrl.startsWith('http') || previewingResume.resumeUrl.startsWith('data:'))) 
-                                               ? previewingResume.resumeUrl 
-                                               : '/demo_resume.pdf';
-                           const link = document.createElement('a');
-                           link.href = resolvedUrl;
-                           link.download = `${previewingResume.name.replace(/\s+/g, '_')}_Resume.pdf`;
-                           document.body.appendChild(link);
-                           link.click();
-                           document.body.removeChild(link);
-                           showToast('Resume downloaded successfully!', 'success');
-                        }} className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"><Download size={20} /></button>
+                        {previewingResume.resumeUrl && (
+                           <button onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = previewingResume.resumeUrl;
+                              link.download = `${previewingResume.name.replace(/\s+/g, '_')}_Resume.pdf`;
+                              link.target = '_blank';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              showToast('Resume downloaded successfully!', 'success');
+                           }} className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all" title="Download"><Download size={20} /></button>
+                        )}
                         <button onClick={() => setPreviewingResume(null)} className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all text-slate-400 dark:text-slate-500"><X size={24} /></button>
                      </div>
                   </div>
                   <div className="flex-1 bg-slate-100 dark:bg-slate-950 overflow-y-auto p-4 sm:p-10 flex justify-center min-h-[70vh]">
                      {previewingResume.resumeUrl ? (
                         <iframe 
-                           src={(previewingResume.resumeUrl.startsWith('http') || previewingResume.resumeUrl.startsWith('data:')) ? previewingResume.resumeUrl : '/demo_resume.pdf'}
+                           src={previewingResume.resumeUrl}
                            className="w-full max-w-4xl bg-white shadow-2xl rounded-2xl min-h-[70vh] border border-slate-200 dark:border-slate-800" 
                            title="Resume Preview"
                         />
                      ) : (
                         <div className="w-full max-w-[800px] bg-white dark:bg-slate-900 shadow-2xl rounded-sm p-12 sm:p-20 relative overflow-hidden ring-1 ring-slate-900/5 dark:ring-slate-800 min-h-[60vh] flex flex-col items-center justify-center text-center">
                            <FileText size={64} className="text-slate-200 dark:text-slate-800 mb-6" />
-                           <h3 className="text-2xl font-bold text-slate-700 dark:text-slate-300 mb-2">No Resume Uploaded</h3>
+                           <h3 className="text-2xl font-bold text-slate-700 dark:text-slate-300 mb-2">No Resume File Uploaded</h3>
                            <p className="text-slate-500 dark:text-slate-400 max-w-md">
-                              {previewingResume.name} has not uploaded a formatted resume or sufficient profile details to generate one.
+                              {previewingResume.name} applied with profile details without an attached document file.
                            </p>
-                           {/* AI Overlay Checkmark Placeholder */}
-                           <div className="absolute top-12 right-12 flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-full shadow-xl opacity-50">
-                              <Sparkles size={16} />
-                              <span className="text-xs font-bold">N/A</span>
-                           </div>
                         </div>
                      )}
                   </div>
                  <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 shrink-0">
                     <button onClick={() => setPreviewingResume(null)} className="px-6 py-2.5 text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all">Close</button>
-                    <button onClick={() => {
-                       window.print();
-                    }} className="px-8 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg active:scale-95">Print Resume</button>
+                    {previewingResume.resumeUrl && (
+                       <button onClick={() => {
+                          const win = window.open(previewingResume.resumeUrl, '_blank');
+                          if (win) win.focus();
+                       }} className="px-8 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-lg active:scale-95">Open In New Tab</button>
+                    )}
                  </div>
               </motion.div>
            </div>

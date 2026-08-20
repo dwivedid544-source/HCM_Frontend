@@ -107,7 +107,6 @@ import PayrollConfig from './features/admin/PayrollConfig';
 import Holidays from './features/admin/Holidays';
 import BenefitsConfig from './features/admin/BenefitsConfig';
 import ComplianceCenter from './features/admin/ComplianceCenter';
-import Integrations from './features/admin/Integrations';
 import Billing from './features/admin/Billing';
 import AdminAuditLogs from './features/admin/AuditLogs';
 import ShiftManagement from './features/admin/ShiftManagement';
@@ -316,7 +315,6 @@ function App() {
               <Route path="holidays" element={<Holidays />} />
               <Route path="benefits" element={<BenefitsConfig />} />
               <Route path="compliance" element={<ComplianceCenter />} />
-              <Route path="integrations" element={<Integrations />} />
               <Route path="billing" element={<Billing />} />
               <Route path="audit" element={<AdminAuditLogs />} />
               <Route path="resignations" element={<AdminResignations />} />

@@ -16,9 +16,13 @@ import {
 import { cn } from '../../utils/cn';
 
 // Recursive Node Component
-const OrgChartNode = ({ node, isRoot = false, searchQuery = '' }) => {
+// Recursive Node Component
+const OrgChartNode = ({ node, isRoot = false, searchQuery = '', parentColor = null }) => {
   const [isExpanded, setIsExpanded] = useState(isRoot || node.type === 'department');
   
+  // Resolve branch color: inherits parent department color down the hierarchy
+  const branchColor = node.color || parentColor || '#6366f1';
+
   // Highlight if it matches search
   const matchesSearch = searchQuery && (
     (node.name && node.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -51,20 +55,20 @@ const OrgChartNode = ({ node, isRoot = false, searchQuery = '' }) => {
               : "border-slate-200 dark:border-slate-800",
             isRoot ? "shadow-lg ring-2 ring-indigo-500/20" : ""
           )}
-          style={{ borderTopColor: node.color || '#4f46e5', borderTopWidth: '4px' }}
+          style={{ borderTopColor: branchColor, borderTopWidth: '4px' }}
           onClick={toggleExpand}
         >
           <div className="flex items-start justify-between mb-2">
             <div 
               className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm font-bold"
-              style={{ backgroundColor: node.color || '#4f46e5' }}
+              style={{ backgroundColor: branchColor }}
             >
               <Building2 size={20} />
             </div>
             {totalChildCount > 0 && (
               <button 
                 onClick={toggleExpand}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/50 dark:hover:text-indigo-400 transition-colors text-xs font-bold border border-slate-200 dark:border-slate-700"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs font-bold border border-slate-200 dark:border-slate-700"
                 title={isExpanded ? "Collapse sub-items" : "Expand sub-items"}
               >
                 <span>{totalChildCount}</span>
@@ -77,13 +81,21 @@ const OrgChartNode = ({ node, isRoot = false, searchQuery = '' }) => {
           
           {node.head && (
             <p className="text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-2 truncate">
-              <span className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 flex items-center justify-center text-[9px] font-bold shrink-0">H</span>
+              <span 
+                className="w-4 h-4 rounded-full text-white flex items-center justify-center text-[9px] font-bold shrink-0 shadow-xs"
+                style={{ backgroundColor: branchColor }}
+              >
+                H
+              </span>
               <span className="truncate">{node.head}</span>
             </p>
           )}
 
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400 font-bold">
+            <div 
+              className="flex items-center gap-1.5 text-[11px] font-extrabold"
+              style={{ color: branchColor }}
+            >
               <Users size={13} />
               <span>{node.employeeCount || 0} Members</span>
             </div>
@@ -95,7 +107,7 @@ const OrgChartNode = ({ node, isRoot = false, searchQuery = '' }) => {
 
         {/* Vertical connector line extending down from department node bottom */}
         {isExpanded && totalChildCount > 0 && (
-          <div className="w-[2px] h-6 bg-indigo-500 shadow-sm shrink-0" />
+          <div className="w-[2px] h-6 shadow-sm shrink-0" style={{ backgroundColor: branchColor }} />
         )}
 
         {/* Children (Sub-departments & Direct Employees) */}
@@ -117,18 +129,21 @@ const OrgChartNode = ({ node, isRoot = false, searchQuery = '' }) => {
                     {/* Horizontal Connector Line segment */}
                     {!isSingle && (
                       <div className="absolute top-0 left-0 right-0 h-[2px]">
-                        {!isFirst && <div className="absolute top-0 left-0 w-1/2 h-[2px] bg-indigo-500" />}
-                        {!isLast && <div className="absolute top-0 right-0 w-1/2 h-[2px] bg-indigo-500" />}
+                        {!isFirst && <div className="absolute top-0 left-0 w-1/2 h-[2px]" style={{ backgroundColor: branchColor }} />}
+                        {!isLast && <div className="absolute top-0 right-0 w-1/2 h-[2px]" style={{ backgroundColor: branchColor }} />}
                       </div>
                     )}
 
                     {/* Vertical Connector Line segment down to child card */}
-                    <div className="w-[2px] h-6 bg-indigo-500 shrink-0" />
+                    <div className="w-[2px] h-6 shrink-0" style={{ backgroundColor: branchColor }} />
                     
                     {/* Intersection Junction Dot */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-indigo-600 ring-2 ring-white dark:ring-slate-900 shadow-sm z-20" />
+                    <div 
+                      className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm z-20" 
+                      style={{ backgroundColor: branchColor }}
+                    />
 
-                    <OrgChartNode node={child} searchQuery={searchQuery} />
+                    <OrgChartNode node={child} parentColor={branchColor} searchQuery={searchQuery} />
                   </div>
                 );
               })}
@@ -154,26 +169,39 @@ const OrgChartNode = ({ node, isRoot = false, searchQuery = '' }) => {
             "relative bg-white dark:bg-slate-900 rounded-2xl shadow-md border-2 border-slate-200 dark:border-slate-800 w-60 p-4 z-10 transition-all hover:shadow-xl hover:-translate-y-0.5 cursor-pointer select-none",
             matchesSearch 
               ? "border-amber-400 ring-4 ring-amber-400/30 bg-amber-50/20 dark:bg-amber-950/20" 
-              : "hover:border-indigo-300 dark:hover:border-indigo-700"
+              : "hover:border-slate-300 dark:hover:border-slate-700"
           )}
+          style={{ borderTopColor: branchColor, borderTopWidth: '3px' }}
           onClick={toggleExpand}
         >
           <div className="flex items-start gap-3">
             <div className="relative shrink-0">
-              <img 
-                src={node.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(node.fullName)}&background=6366f1&color=ffffff&bold=true`} 
-                alt={node.fullName}
-                className="w-11 h-11 rounded-full object-cover border-2 border-white dark:border-slate-800 shadow-sm"
-              />
+              {node.avatarUrl ? (
+                <img 
+                  src={node.avatarUrl} 
+                  alt={node.fullName}
+                  className="w-11 h-11 rounded-full object-cover border-2 border-white dark:border-slate-800 shadow-sm"
+                />
+              ) : (
+                <div 
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-white font-extrabold text-xs shadow-sm border-2 border-white dark:border-slate-800"
+                  style={{ backgroundColor: branchColor }}
+                >
+                  {node.fullName ? node.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'EM'}
+                </div>
+              )}
               <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900" title="Active" />
             </div>
 
             <div className="flex-1 min-w-0">
               <h4 className="font-extrabold text-slate-900 dark:text-white text-sm truncate tracking-tight">{node.fullName}</h4>
               <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 truncate mt-0.5">{node.role || 'Employee'}</p>
-              {node.department?.name && (
-                <p className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 truncate mt-1">
-                  {node.department.name}
+              {(node.departmentName || node.department?.name) && (
+                <p 
+                  className="text-[10px] font-bold truncate mt-1"
+                  style={{ color: branchColor }}
+                >
+                  {node.departmentName || node.department?.name}
                 </p>
               )}
             </div>
@@ -181,7 +209,7 @@ const OrgChartNode = ({ node, isRoot = false, searchQuery = '' }) => {
             {reportCount > 0 && (
               <button 
                 onClick={toggleExpand}
-                className="flex items-center gap-0.5 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 transition-colors text-[10px] font-bold shrink-0 border border-slate-200 dark:border-slate-700"
+                className="flex items-center gap-0.5 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-[10px] font-bold shrink-0 border border-slate-200 dark:border-slate-700"
                 title={isExpanded ? "Collapse Direct Reports" : "Expand Direct Reports"}
               >
                 <span>{reportCount}</span>
@@ -193,7 +221,7 @@ const OrgChartNode = ({ node, isRoot = false, searchQuery = '' }) => {
 
         {/* Vertical connector down from employee node bottom */}
         {isExpanded && reportCount > 0 && (
-          <div className="w-[2px] h-6 bg-indigo-500 shadow-sm shrink-0" />
+          <div className="w-[2px] h-6 shadow-sm shrink-0" style={{ backgroundColor: branchColor }} />
         )}
 
         {/* Direct Reports */}
@@ -215,18 +243,21 @@ const OrgChartNode = ({ node, isRoot = false, searchQuery = '' }) => {
                     {/* Horizontal Connector Line segment */}
                     {!isSingle && (
                       <div className="absolute top-0 left-0 right-0 h-[2px]">
-                        {!isFirst && <div className="absolute top-0 left-0 w-1/2 h-[2px] bg-indigo-500" />}
-                        {!isLast && <div className="absolute top-0 right-0 w-1/2 h-[2px] bg-indigo-500" />}
+                        {!isFirst && <div className="absolute top-0 left-0 w-1/2 h-[2px]" style={{ backgroundColor: branchColor }} />}
+                        {!isLast && <div className="absolute top-0 right-0 w-1/2 h-[2px]" style={{ backgroundColor: branchColor }} />}
                       </div>
                     )}
 
                     {/* Vertical Connector Line segment down to report card */}
-                    <div className="w-[2px] h-6 bg-indigo-500 shrink-0" />
+                    <div className="w-[2px] h-6 shrink-0" style={{ backgroundColor: branchColor }} />
                     
                     {/* Intersection Junction Dot */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-indigo-600 ring-2 ring-white dark:ring-slate-900 shadow-sm z-20" />
+                    <div 
+                      className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm z-20" 
+                      style={{ backgroundColor: branchColor }}
+                    />
 
-                    <OrgChartNode node={report} searchQuery={searchQuery} />
+                    <OrgChartNode node={report} parentColor={branchColor} searchQuery={searchQuery} />
                   </div>
                 );
               })}
