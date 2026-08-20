@@ -17,7 +17,8 @@ import {
   Upload,
   X,
   AlertCircle,
-  User
+  User,
+  Target
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
