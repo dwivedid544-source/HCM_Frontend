@@ -325,11 +325,7 @@ const EmployeeLeave = () => {
                                )}
                                <div className="flex items-center justify-end gap-2">
                                  {item.status === 'Pending' && (
-<<<<<<< HEAD
                                    <PermissionGate module="leave" action="delete">
-                                   <button onClick={async () => { await cancelLeave(item.id); }} className="text-[9px] font-bold text-rose-500 font-bold hover:underline">Cancel</button>
-                                   </PermissionGate>
-=======
                                    <button 
                                      onClick={() => handleCancelLeave(item.id)} 
                                      disabled={isCancellingId === item.id}
@@ -337,7 +333,7 @@ const EmployeeLeave = () => {
                                    >
                                      {isCancellingId === item.id ? 'Cancelling...' : 'Cancel'}
                                    </button>
->>>>>>> c2dbad0 (updated push)
+                                   </PermissionGate>
                                  )}
                                  <p className="text-[10px] font-black text-primary-600 font-bold">{item.managerComment ? 'Reviewed' : 'Awaiting Review'}</p>
                               </div>
