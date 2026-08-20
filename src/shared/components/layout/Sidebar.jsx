@@ -122,37 +122,33 @@ const Sidebar = ({ collapsed, setCollapsed, allRoles, onItemClick }) => {
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // After route change, ensure active item is visible in sidebar
+  // After route change or group toggle, ensure active item is naturally visible without extra gap
   useEffect(() => {
     const container = navContainerRef.current;
     if (!container) return;
 
     const scrollActiveIntoView = () => {
       const activeEl = activeItemRef.current || container.querySelector('.sidebar-item-active');
-      if (activeEl) {
-        const containerRect = container.getBoundingClientRect();
-        const activeRect = activeEl.getBoundingClientRect();
+      if (!activeEl) return;
 
-        const isAbove = activeRect.top < containerRect.top + 10;
-        const isBelow = activeRect.bottom > containerRect.bottom - 10;
+      const containerRect = container.getBoundingClientRect();
+      const activeRect = activeEl.getBoundingClientRect();
 
-        if (isAbove || isBelow) {
-          activeEl.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest'
-          });
-        }
+      // Only scroll if item is out of view
+      const isTooHigh = activeRect.top < containerRect.top;
+      const isTooLow = activeRect.bottom > containerRect.bottom;
+
+      if (isTooHigh || isTooLow) {
+        activeEl.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
       }
     };
 
-    const t1 = setTimeout(scrollActiveIntoView, 60);
-    const t2 = setTimeout(scrollActiveIntoView, 250);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [location.pathname, roleItems]);
+    const timer = setTimeout(scrollActiveIntoView, 100);
+    return () => clearTimeout(timer);
+  }, [location.pathname, roleItems, expandedGroups]);
 
   // Compute active item information for Scope Indicator
   const getActiveItemInfo = () => {
@@ -266,7 +262,7 @@ const Sidebar = ({ collapsed, setCollapsed, allRoles, onItemClick }) => {
       )}
 
       {/* Navigation Links */}
-      <div ref={navContainerRef} className="flex-1 overflow-y-auto px-3 space-y-1 py-4">
+      <div ref={navContainerRef} className="flex-1 overflow-y-auto px-3 space-y-1 py-3">
         {roleItems.map((item, index) => {
           if (item.group) {
             const isGroupExpanded = expandedGroups[item.group] ?? true;

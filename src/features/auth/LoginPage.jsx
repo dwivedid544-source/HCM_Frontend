@@ -9,9 +9,10 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
-  Globe
+  Globe,
+  Clock
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { cn } from '../../utils/cn';
 import axios from 'axios';
@@ -34,6 +35,10 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const { login, authError, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const searchParams = new URLSearchParams(location.search);
+  const isIdleLogout = searchParams.get('reason') === 'idle' || sessionStorage.getItem('logout_reason') === 'idle';
 
   // Forgot password flow states
   const [step, setStep] = useState('login'); // 'login' | 'forgot-password' | 'verify-otp' | 'reset-password'
@@ -235,6 +240,15 @@ const LoginPage = () => {
               <div className="text-left mb-10">
                 <h2 className="text-3xl font-extrabold text-slate-900 mb-2 dark:text-white">Welcome back</h2>
                 <p className="text-slate-500 font-medium">Please enter your details to sign in.</p>
+                {isIdleLogout && (
+                  <div className="mt-4 p-3.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl flex items-start gap-3 text-xs font-medium shadow-sm animate-in fade-in duration-300">
+                    <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold block text-amber-950">Session Timed Out</span>
+                      Your session was automatically logged out due to inactivity for security. Please sign in again.
+                    </div>
+                  </div>
+                )}
                 {authError && (
                   <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium">
                     {authError}

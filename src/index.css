@@ -5,6 +5,66 @@
 .text-slate-400 { @apply text-slate-600; }
 .text-slate-500 { @apply text-slate-700; }
 
+/* ============================================================
+   Global Cursor System:
+   - Normal arrow cursor everywhere (text, headings, cards, tables, etc.)
+   - No I-beam text cursor on non-editable content
+   - Inputs, textareas, and editable fields retain text cursor
+   - Buttons, links, and clickable controls retain pointer cursor
+============================================================ */
+
+*,
+*::before,
+*::after,
+html,
+body,
+h1, h2, h3, h4, h5, h6,
+p, span, div, label,
+table, thead, tbody, tr, th, td,
+section, article, aside, header, footer, nav,
+ul, ol, li, blockquote, pre, code {
+  cursor: default;
+}
+
+/* Typing & editable inputs strictly retain text cursor */
+input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+textarea,
+[contenteditable="true"],
+.allow-text-cursor {
+  cursor: text !important;
+}
+
+/* Clickable / interactive controls retain pointer cursor */
+a,
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+select,
+option,
+summary,
+.cursor-pointer,
+[clickable="true"] {
+  cursor: pointer !important;
+}
+
+/* Disabled state */
+:disabled,
+[disabled],
+.cursor-not-allowed {
+  cursor: not-allowed !important;
+}
+
+/* Specific drag/resize cursor utilities */
+.cursor-grab { cursor: grab !important; }
+.cursor-grabbing { cursor: grabbing !important; }
+.cursor-move { cursor: move !important; }
+.cursor-col-resize { cursor: col-resize !important; }
+.cursor-row-resize { cursor: row-resize !important; }
+
 @layer base {
   body {
     @apply bg-slate-50 text-slate-900 antialiased;

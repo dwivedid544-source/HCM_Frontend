@@ -25,9 +25,13 @@ const API = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+export const getActiveToken = () => {
+  return sessionStorage.getItem('hcm_token');
+};
+
 // ── Request Interceptor: Har request mein token attach karo ──
 API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('hcm_token');
+  const token = getActiveToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -39,11 +43,11 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      const token = localStorage.getItem('hcm_token');
+      const token = getActiveToken();
       if (token) {
         // Token was present but expired/invalid - logout and redirect
-        localStorage.removeItem('hcm_token');
-        localStorage.removeItem('hcm_user');
+        sessionStorage.removeItem('hcm_token');
+        sessionStorage.removeItem('hcm_user');
         window.location.href = '/login';
       }
     }

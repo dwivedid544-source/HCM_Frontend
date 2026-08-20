@@ -1313,6 +1313,10 @@ export const AdminProvider = ({ children, user }) => {
         }));
       }
 
+      if (category === 'security' && data.sessionTimeout) {
+        localStorage.setItem('hcm_session_timeout', data.sessionTimeout);
+      }
+
       if (category === 'general' && data.language) {
         applyTranslation(data.language);
         setTimeout(() => {

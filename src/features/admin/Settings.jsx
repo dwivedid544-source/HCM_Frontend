@@ -203,9 +203,12 @@ const Settings = () => {
                               <div className="flex items-center justify-between">
                                  <span className="text-sm font-bold text-slate-900 tracking-tight">Auto-Logout Timeout</span>
                                  <select value={appSettings.security.sessionTimeout} onChange={e => updateAdminSettings('security', { sessionTimeout: e.target.value })} className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 focus:outline-none">
-                                    <option>15 Minutes</option>
-                                    <option>30 Minutes</option>
-                                    <option>1 Hour</option>
+                                    <option value="1 Minute">1 Minute (Demo / Test)</option>
+                                    <option value="5 Minutes">5 Minutes</option>
+                                    <option value="15 Minutes">15 Minutes (Default)</option>
+                                    <option value="30 Minutes">30 Minutes</option>
+                                    <option value="1 Hour">1 Hour</option>
+                                    <option value="2 Hours">2 Hours</option>
                                  </select>
                               </div>
                            </div>

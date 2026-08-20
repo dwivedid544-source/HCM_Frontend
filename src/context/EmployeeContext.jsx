@@ -24,6 +24,7 @@ export const EmployeeProvider = ({ children }) => {
   const [performance, setPerformance] = useState({ goals: [], skills: [], reviews: [] });
   const [tickets, setTickets] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -254,6 +255,15 @@ export const EmployeeProvider = ({ children }) => {
       setHolidays(res.data.data || []);
     } catch {
       showToast('Failed to load holidays', 'error');
+    }
+  }, []);
+
+  const fetchDocuments = useCallback(async () => {
+    try {
+      const res = await employeeAPI.getDocuments();
+      setDocuments(res.data.data || []);
+    } catch {
+      showToast('Failed to load documents', 'error');
     }
   }, []);
 
@@ -489,17 +499,6 @@ export const EmployeeProvider = ({ children }) => {
     }
   };
 
-  const [documents, setDocuments] = useState([]);
-
-  const fetchDocuments = useCallback(async () => {
-    try {
-      const res = await employeeAPI.getDocuments();
-      setDocuments(res.data.data || []);
-    } catch {
-      showToast('Failed to load documents', 'error');
-    }
-  }, []);
-
   const uploadDoc = async (doc) => {
     try {
       await employeeAPI.uploadDocument(doc);
@@ -563,7 +562,7 @@ export const EmployeeProvider = ({ children }) => {
       loading, error,
       showToast,
       submitResignation,
-      refetch: { fetchProfile, fetchAttendance, fetchLeaves, fetchPayslips, fetchPerformance, fetchBenefits, fetchTasks, fetchTickets, fetchAnnouncements, fetchHolidays },
+      refetch: { fetchProfile, fetchAttendance, fetchLeaves, fetchPayslips, fetchPerformance, fetchBenefits, fetchTasks, fetchTickets, fetchAnnouncements, fetchHolidays, fetchDocuments },
       refetchAll: initializePortal,
     }}>
       {children}

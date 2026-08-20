@@ -33,27 +33,28 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.getMe();
       const freshUser = response.data.data;
       setUser(prev => ({ ...prev, ...freshUser }));
-      localStorage.setItem('hcm_user', JSON.stringify({ ...user, ...freshUser }));
+      sessionStorage.setItem('hcm_user', JSON.stringify({ ...user, ...freshUser }));
     } catch (err) {
-      // Token invalid hai - logout
+      // Token invalid hai - logout this tab
       logout();
     }
   };
 
-  // ── App load hone par check karo ki token saved hai ya nahi ──
+  // ── App load hone par check karo ki is tab mein session saved hai ya nahi ──
   useEffect(() => {
-    const token = localStorage.getItem('hcm_token');
-    const savedUser = localStorage.getItem('hcm_user');
+    // Each tab maintains its independent session in sessionStorage
+    const token = sessionStorage.getItem('hcm_token');
+    const savedUser = sessionStorage.getItem('hcm_user');
 
     if (token && savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      // Automatically refresh user data to sync any backend role changes
-      refreshUser();
-    } else if (savedUser && !token) {
-      // Self-healing: if they have an old tokenless session, force-clear it
-      localStorage.removeItem('hcm_token');
-      localStorage.removeItem('hcm_user');
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        refreshUser();
+      } catch (e) {
+        setUser(null);
+      }
+    } else {
       setUser(null);
     }
 
@@ -71,13 +72,14 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login({ email, password });
       const { token, user: userData } = response.data.data;
 
-      // Clear stale session data from any previous un-logged-out sessions
+      // Clear stale session data for this tab
       sessionStorage.removeItem('hcm_preview_role');
       sessionStorage.removeItem('hcm_current_scope');
+      sessionStorage.removeItem('logout_reason');
 
-      // Token aur user info save karo
-      localStorage.setItem('hcm_token', token);
-      localStorage.setItem('hcm_user', JSON.stringify(userData));
+      // Save to this tab's sessionStorage (independent per tab)
+      sessionStorage.setItem('hcm_token', token);
+      sessionStorage.setItem('hcm_user', JSON.stringify(userData));
       setUser(userData);
 
       // Role ke hisaab se navigate karo
@@ -93,15 +95,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   // ── LOGOUT ──
-  const logout = () => {
+  const logout = (reason = null) => {
     setUser(null);
     setPreviewRole(null);
-    localStorage.removeItem('hcm_token');
-    localStorage.removeItem('hcm_user');
+    // Clear this tab's session only
+    sessionStorage.removeItem('hcm_token');
+    sessionStorage.removeItem('hcm_user');
     sessionStorage.removeItem('hcm_preview_role');
     sessionStorage.removeItem('hcm_current_scope');
     sessionStorage.setItem('logged_out', 'true');
-    navigate('/login');
+    if (reason) {
+      sessionStorage.setItem('logout_reason', reason);
+      navigate(`/login?reason=${reason}`);
+    } else {
+      sessionStorage.removeItem('logout_reason');
+      navigate('/login');
+    }
   };
 
   // ── PREVIEW MODE (SuperAdmin kisi aur role ka dashboard preview kare) ──

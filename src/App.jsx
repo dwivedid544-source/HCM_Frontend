@@ -37,6 +37,7 @@ import SignupPage from './features/auth/SignupPage';
 import AppLayout from './shared/components/layout/AppLayout';
 import LandingPage from './features/LandingPage';
 import BookDemo from './features/BookDemo';
+import IdleTimer from './shared/components/common/IdleTimer';
 
 // Candidate Pages
 import CandidateDashboard from './features/candidate/CandidateDashboard';
@@ -172,6 +173,7 @@ function App() {
         <CurrencyProvider>
           <SettingsProvider>
           <AuthProvider>
+            <IdleTimer />
             <PermissionProvider>
             <ScopeProvider>
             <AdminProviderWrapper>
