@@ -23,7 +23,7 @@ import {
 import { useAdmin } from '../../../context/AdminContext';
 import { cn } from '../../../utils/cn';
 import PhoneInput from '../ui/PhoneInput';
-import api from '../../../utils/apiService';
+import api, { uploadAPI } from '../../../utils/apiService';
 import DatePicker from '../../../shared/components/common/DatePicker';
 
 const UserModal = ({ isOpen, onClose, userToEdit = null }) => {
@@ -320,7 +320,7 @@ const UserModal = ({ isOpen, onClose, userToEdit = null }) => {
     }
   };
 
-  const handlePhotoUpload = (e) => {
+  const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -329,9 +329,22 @@ const UserModal = ({ isOpen, onClose, userToEdit = null }) => {
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setErrors(prev => ({ ...prev, img: 'Photo must be 2 MB or smaller' }));
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, img: 'Photo must be 5 MB or smaller' }));
       return;
+    }
+
+    try {
+      const res = await uploadAPI.uploadImage(file, 'hcm/avatars');
+      const cloudUrl = res.data?.data?.url;
+      if (cloudUrl) {
+        setFormData(prev => ({ ...prev, img: cloudUrl }));
+        setErrors(prev => ({ ...prev, img: null }));
+        setIsDirty(true);
+        return;
+      }
+    } catch (uploadErr) {
+      console.warn('Direct avatar cloud upload failed, using fallback:', uploadErr.message);
     }
 
     const reader = new FileReader();

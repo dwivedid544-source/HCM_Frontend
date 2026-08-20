@@ -36,7 +36,6 @@ const ImportModal = ({ isOpen, onClose, entity = 'users', onImportSuccess }) => 
       if (onImportSuccess) {
         try { onImportSuccess(); } catch (e) {}
       }
-      window.location.reload();
     }
   };
 

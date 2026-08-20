@@ -9,7 +9,7 @@ import { cn } from '../../utils/cn';
 import { useHR } from '../../context/HRContext';
 import { useAuth } from '../../hooks/useAuth';
 import CenterModal from '../../shared/components/layout/CenterModal';
-import { getBackendURL } from '../../utils/apiService';
+import { getBackendURL, uploadAPI } from '../../utils/apiService';
 
 const Messages = () => {
   const { tickets = [], createTicket, replyToTicket, closeTicket, employees = [], showToast } = useHR();
@@ -54,15 +54,25 @@ const Messages = () => {
     e.preventDefault();
     if ((!inputText.trim() && !attachment) || !selectedChat) return;
 
+    let cloudAttachmentUrl = null;
     if (attachment) {
+      try {
+        const res = await uploadAPI.uploadAuto(attachment, 'hcm/chat');
+        cloudAttachmentUrl = res.data?.data?.url;
+      } catch (uploadErr) {
+        console.warn('Chat upload failed, using fallback:', uploadErr.message);
+      }
+    }
+
+    if (cloudAttachmentUrl) {
+      await replyToTicket(selectedChat, { text: inputText, attachmentUrl: cloudAttachmentUrl });
+    } else if (attachment) {
       const formData = new FormData();
       if (inputText.trim()) formData.append('text', inputText);
       formData.append('file', attachment);
       await replyToTicket(selectedChat, formData);
     } else {
-      await replyToTicket(selectedChat, inputText); // Or we can pass { text: inputText } if hrAPI expects it, wait hrAPI in HRContext does {text: text}, but if we pass formData... let's check HRContext!
-      // Wait, HRContext replyToTicket takes (id, text). I should pass FormData directly!
-      // Let's modify HRContext instead to accept payload directly, or we can just send FormData from HRContext.
+      await replyToTicket(selectedChat, { text: inputText });
     }
     
     setInputText('');

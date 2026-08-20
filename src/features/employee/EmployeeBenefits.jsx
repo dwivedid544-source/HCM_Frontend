@@ -11,6 +11,7 @@ import CenterModal from '../../shared/components/layout/CenterModal';
 import { useCurrency } from '../../hooks/useCurrency';
 import DatePicker from '../../shared/components/common/DatePicker';
 import StatCard from '../../shared/components/ui/StatCard';
+import { uploadAPI } from '../../utils/apiService';
 
 const EmployeeBenefits = () => {
   const { formatCurrency, getSymbol, getIcon, masterCurrency } = useCurrency();
@@ -21,6 +22,7 @@ const EmployeeBenefits = () => {
    const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
    const [claimDate, setClaimDate] = useState('');
    const [claimFile, setClaimFile] = useState(null);
+   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
 
    const activeBenefitsCount = (benefits.enrolledPlans || []).length;
    const insurancePlan = (benefits.enrolledPlans || []).find(ep => ep.benefitPlan?.category?.toLowerCase().includes('health') || ep.benefitPlan?.category?.toLowerCase().includes('insurance'));
@@ -54,16 +56,28 @@ const EmployeeBenefits = () => {
       };
    });
 
-   const handleClaimSubmit = (e) => {
+   const handleClaimSubmit = async (e) => {
       e.preventDefault();
       const formData = new FormData(e.target);
-      addBenefitClaim({
+      setIsUploadingReceipt(true);
+      let receiptUrl = null;
+      if (claimFile) {
+         try {
+            const res = await uploadAPI.uploadDocument(claimFile, 'hcm/receipts');
+            receiptUrl = res.data?.data?.url;
+         } catch (uploadErr) {
+            console.warn('ImageKit receipt upload failed, continuing:', uploadErr.message);
+         }
+      }
+      await addBenefitClaim({
          type: formData.get('type'),
          amount: formData.get('amount'),
          date: claimDate,
          description: formData.get('description'),
-         file: claimFile
+         receiptUrl,
+         file: receiptUrl || claimFile?.name || null
       });
+      setIsUploadingReceipt(false);
       setIsClaimModalOpen(false);
       setClaimDate('');
       setClaimFile(null);

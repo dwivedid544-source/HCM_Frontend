@@ -86,17 +86,29 @@ const EmployeeDocuments = () => {
     }
     try {
       setIsUploading(true);
-      let payloadBase64 = fileBase64;
-      if (!payloadBase64 && selectedFile) {
-        payloadBase64 = await readFileAsBase64(selectedFile);
+      let fileDataUrl = null;
+      if (selectedFile) {
+        try {
+          const res = await uploadAPI.uploadDocument(selectedFile, 'hcm/documents');
+          if (res.data?.data?.url) {
+            fileDataUrl = res.data.data.url;
+          }
+        } catch (uploadErr) {
+          console.warn('Direct ImageKit upload error, using base64:', uploadErr.message);
+        }
       }
+
+      if (!fileDataUrl) {
+        fileDataUrl = fileBase64 || (selectedFile ? await readFileAsBase64(selectedFile) : null);
+      }
+
       const formData = new FormData(e.target);
       const newDoc = {
         name: docName || selectedFile?.name || 'Document.pdf',
         category: formData.get('category') || 'Other',
         size: fileSize || '1.0 KB',
-        fileBase64: payloadBase64 || null,
-        content: payloadBase64 || null
+        fileBase64: fileDataUrl || null,
+        content: fileDataUrl || null
       };
       await uploadDoc(newDoc);
       setIsUploadModalOpen(false);
@@ -104,6 +116,7 @@ const EmployeeDocuments = () => {
       setDocName('');
       setFileBase64('');
       setFileSize('0 KB');
+      showToast('Document added to Vault successfully!', 'success');
     } catch (err) {
       console.error('Error committing document to vault:', err);
       showToast('Failed to upload document', 'error');

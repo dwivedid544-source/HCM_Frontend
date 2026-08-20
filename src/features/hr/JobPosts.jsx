@@ -20,7 +20,7 @@ const JobPosts = () => {
   const { formatCurrency, getSymbol, getIcon, masterCurrency } = useCurrency();
   const { formatDate } = useDateFormat();
 
-  const { jobs, addJob, updateJob, deleteJob, showToast } = useHR();
+  const { jobs, addJob, updateJob, deleteJob, showToast, fetchJobs } = useHR();
   const location = useLocation();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -463,7 +463,7 @@ const JobPosts = () => {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         entity="jobs"
-        onImportSuccess={() => window.location.reload()}
+        onImportSuccess={() => fetchJobs && fetchJobs()}
       />
     </div>
   );

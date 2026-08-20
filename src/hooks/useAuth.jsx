@@ -77,9 +77,11 @@ export const AuthProvider = ({ children }) => {
       sessionStorage.removeItem('hcm_current_scope');
       sessionStorage.removeItem('logout_reason');
 
-      // Save to this tab's sessionStorage (independent per tab)
+      // Save to this tab's sessionStorage and localStorage for seamless sync
       sessionStorage.setItem('hcm_token', token);
       sessionStorage.setItem('hcm_user', JSON.stringify(userData));
+      localStorage.setItem('hcm_token', token);
+      localStorage.setItem('hcm_user', JSON.stringify(userData));
       setUser(userData);
 
       // Role ke hisaab se navigate karo
@@ -98,11 +100,13 @@ export const AuthProvider = ({ children }) => {
   const logout = (reason = null) => {
     setUser(null);
     setPreviewRole(null);
-    // Clear this tab's session only
+    // Clear this tab's session and localStorage
     sessionStorage.removeItem('hcm_token');
     sessionStorage.removeItem('hcm_user');
     sessionStorage.removeItem('hcm_preview_role');
     sessionStorage.removeItem('hcm_current_scope');
+    localStorage.removeItem('hcm_token');
+    localStorage.removeItem('hcm_user');
     sessionStorage.setItem('logged_out', 'true');
     if (reason) {
       sessionStorage.setItem('logout_reason', reason);

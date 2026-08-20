@@ -14,7 +14,8 @@ import {
    Save,
    RotateCcw,
    CheckCircle2,
-   Trash2
+   Trash2,
+   Loader2
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAdmin } from '../../context/AdminContext';
@@ -111,6 +112,8 @@ const OrgSetup = () => {
    const [orgId, setOrgId] = useState(null);
    const [isLoading, setIsLoading] = useState(true);
    const [isSaving, setIsSaving] = useState(false);
+   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+   const [logoLoadError, setLogoLoadError] = useState(false);
    const fileInputRef = useRef(null);
 
    const triggerFileInput = () => {
@@ -128,6 +131,7 @@ const OrgSetup = () => {
             if (org?.id) {
                setOrgId(org.id);
                setOrgData(mapOrgFromApi(org));
+               setLogoLoadError(false);
             }
          } catch (err) {
             console.error('Failed to load organization from database:', err);
@@ -151,6 +155,7 @@ const OrgSetup = () => {
       e.preventDefault();
       const resetData = { ...defaultOrgData };
       setOrgData(resetData);
+      setLogoLoadError(false);
       localStorage.removeItem(ORG_STORAGE_KEY);
       window.dispatchEvent(new CustomEvent('hcm_global_sync'));
       showToast('All fields cleared', 'success');
@@ -159,14 +164,9 @@ const OrgSetup = () => {
    const handleSave = async (e) => {
       e.preventDefault();
 
-      if (isOrgDataEmpty(orgData)) {
-         window.alert('Please fill in at least one field before saving.');
-         showToast('Please fill in at least one field before saving.', 'error');
-         return;
-      }
-
-      setIsSaving(true);
       try {
+         setIsSaving(true);
+
          let existingOrgId = orgId;
          if (!existingOrgId) {
             const existing = await adminAPI.getOrganization();
@@ -184,6 +184,7 @@ const OrgSetup = () => {
             setOrgId(savedOrg.id);
             const syncedData = mapOrgFromApi(savedOrg);
             setOrgData(syncedData);
+            setLogoLoadError(false);
             localStorage.setItem(ORG_STORAGE_KEY, JSON.stringify(syncedData));
          } else {
             localStorage.setItem(ORG_STORAGE_KEY, JSON.stringify(orgData));
@@ -194,9 +195,8 @@ const OrgSetup = () => {
       } catch (err) {
          console.error('Failed to save organization:', err);
          const message = err.response?.data?.error?.message
-            || (err.code === 'ERR_NETWORK' ? 'Cannot connect to server. Please ensure the backend is running on port 5000.' : null)
+            || (err.code === 'ERR_NETWORK' ? 'Cannot connect to server. Please ensure the backend is running.' : null)
             || 'Failed to save organization configuration to database.';
-         window.alert(message);
          showToast(message, 'error');
       } finally {
          setIsSaving(false);
@@ -211,8 +211,12 @@ const OrgSetup = () => {
             return;
          }
 
+         const localPreview = URL.createObjectURL(file);
+         setOrgData(prev => ({ ...prev, logo: localPreview }));
+         setLogoLoadError(false);
+         setIsUploadingLogo(true);
+
          try {
-            // Upload to cloud (Cloudinary) via backend API
             const response = await uploadAPI.uploadImage(file, 'hcm/logos');
             const cloudUrl = response.data?.data?.url;
 
@@ -221,31 +225,55 @@ const OrgSetup = () => {
                   ...prev,
                   logo: cloudUrl
                }));
-               showToast(`Logo uploaded to ${response.data?.data?.provider || 'cloud'} successfully!`, 'success');
+               setLogoLoadError(false);
+               showToast('Logo uploaded to Cloudinary successfully!', 'success');
+               
+               if (orgId) {
+                  try {
+                     await adminAPI.updateOrganization(orgId, { logoUrl: cloudUrl });
+                  } catch (saveErr) {
+                     console.warn('Auto-save logo warning:', saveErr.message);
+                  }
+               }
+               window.dispatchEvent(new CustomEvent('hcm_global_sync'));
             } else {
-               throw new Error('No URL returned');
+               throw new Error('No URL returned from upload');
             }
          } catch (err) {
-            console.error('Cloud upload failed, using base64 fallback:', err);
-            // Fallback: read as base64 (backend will handle the upload)
+            console.error('Cloud upload failed, falling back to base64:', err);
             const reader = new FileReader();
             reader.onload = (uploadEvent) => {
+               const base64Data = uploadEvent.target.result;
                setOrgData(prev => ({
                   ...prev,
-                  logo: uploadEvent.target.result
+                  logo: base64Data
                }));
-               showToast('Logo uploaded (will be processed on save)', 'success');
+               showToast('Logo ready (will be saved with form)', 'info');
             };
             reader.readAsDataURL(file);
+         } finally {
+            setIsUploadingLogo(false);
          }
       }
    };
 
-   const handleRemoveLogo = () => {
+   const handleRemoveLogo = async () => {
       setOrgData(prev => ({
          ...prev,
-         logo: null
+         logo: ''
       }));
+      setLogoLoadError(false);
+      if (fileInputRef.current) {
+         fileInputRef.current.value = '';
+      }
+      if (orgId) {
+         try {
+            await adminAPI.updateOrganization(orgId, { logoUrl: null });
+         } catch (err) {
+            console.warn('Failed to clear logo in DB:', err.message);
+         }
+      }
+      window.dispatchEvent(new CustomEvent('hcm_global_sync'));
       showToast('Company logo removed', 'info');
    };
 
@@ -484,20 +512,39 @@ const OrgSetup = () => {
                      <div className="flex flex-col items-center gap-4 w-full">
                         <div 
                            onClick={triggerFileInput}
-                           className="relative w-32 h-32 rounded-[2rem] overflow-hidden group cursor-pointer border border-slate-100 dark:border-slate-800 shadow-md"
+                           className="relative w-32 h-32 rounded-[2rem] overflow-hidden group cursor-pointer border border-slate-200 dark:border-slate-800 shadow-md bg-white dark:bg-slate-900 flex items-center justify-center"
                         >
-                           <img 
-                              src={orgData.logo} 
-                              alt="Company Logo" 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                           />
-                           <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 text-white">
-                              <Upload size={20} className="animate-bounce" />
-                              <span className="text-[9px] font-black uppercase tracking-wider">Change Logo</span>
-                           </div>
+                           {logoLoadError ? (
+                              <div className="flex flex-col items-center justify-center p-3 text-slate-400">
+                                 <Building2 size={36} className="text-slate-400" />
+                                 <span className="text-[8px] font-bold mt-1 text-slate-400">Click to Re-upload</span>
+                              </div>
+                           ) : (
+                              <img 
+                                 src={orgData.logo} 
+                                 alt="Company Logo" 
+                                 onError={(e) => {
+                                    console.warn("Logo image load error:", orgData.logo);
+                                    setLogoLoadError(true);
+                                 }}
+                                 className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300" 
+                              />
+                           )}
+                           {isUploadingLogo ? (
+                              <div className="absolute inset-0 bg-slate-900/70 flex flex-col items-center justify-center gap-1.5 text-white">
+                                 <Loader2 size={24} className="animate-spin text-primary-400" />
+                                 <span className="text-[9px] font-bold">Uploading...</span>
+                              </div>
+                           ) : (
+                              <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 text-white">
+                                 <Upload size={20} className="animate-bounce" />
+                                 <span className="text-[9px] font-black uppercase tracking-wider">Change Logo</span>
+                              </div>
+                           )}
                         </div>
                         <button
                            onClick={handleRemoveLogo}
+                           type="button"
                            className="btn-danger text-xs flex items-center gap-2 py-2 px-4 hover:scale-95 transition-all"
                         >
                            <Trash2 size={14} />
@@ -509,10 +556,19 @@ const OrgSetup = () => {
                         onClick={triggerFileInput}
                         className="w-32 h-32 bg-slate-50 dark:bg-slate-800 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center p-4 group cursor-pointer hover:border-primary-500 dark:hover:border-primary-600 hover:bg-primary-50/20 dark:hover:bg-primary-950/10 transition-all relative"
                      >
-                        <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-sm text-slate-350 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-all duration-300">
-                           <Upload size={24} />
-                        </div>
-                        <span className="text-[9px] font-extrabold text-slate-450 dark:text-slate-550 font-bold mt-4 text-center">Click to Upload</span>
+                        {isUploadingLogo ? (
+                           <div className="flex flex-col items-center justify-center gap-2">
+                              <Loader2 size={24} className="animate-spin text-primary-500" />
+                              <span className="text-[9px] font-bold text-slate-500">Uploading...</span>
+                           </div>
+                        ) : (
+                           <>
+                              <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-sm text-slate-400 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-all duration-300">
+                                 <Upload size={24} />
+                              </div>
+                              <span className="text-[9px] font-extrabold text-slate-500 dark:text-slate-400 mt-3 text-center">Click to Upload</span>
+                           </>
+                        )}
                      </div>
                   )}
 

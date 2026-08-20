@@ -14,7 +14,7 @@ import { useCurrency } from '../../hooks/useCurrency';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import ConfirmDialog from '../../shared/components/admin/ConfirmDialog';
 import DatePicker from '../../shared/components/common/DatePicker';
-import api, { employeeAPI } from '../../utils/apiService';
+import api, { employeeAPI, uploadAPI } from '../../utils/apiService';
 
 const OfferLetterDocument = ({ data, mode = 'preview' }) => {
   if (!data) return null;
@@ -266,12 +266,23 @@ const OfferManagement = () => {
     const status = forceDraft ? 'Draft' : 'Sent';
     const activeCand = candidates.find(c => c.name === formData.candidate) || {};
     
+    let uploadedOfferUrl = selectedFile?.url || null;
+    if (selectedFile && !uploadedOfferUrl && selectedFile instanceof File) {
+      try {
+        const res = await uploadAPI.uploadDocument(selectedFile, 'hcm/offers');
+        uploadedOfferUrl = res.data?.data?.url || null;
+      } catch (uploadErr) {
+        console.warn('Offer letter upload failed, proceeding:', uploadErr.message);
+      }
+    }
+
     const payload = {
       ...formData,
       status,
       applicationId: activeCand.id,
       role: formData.role || activeCand.role || 'Role',
       fileName: selectedFile ? selectedFile.name : null,
+      offerLetterUrl: uploadedOfferUrl,
       sentDate: formatDate(new Date())
     };
 
@@ -307,10 +318,21 @@ const OfferManagement = () => {
     showToast('Recruitment tracking updated successfully', 'success');
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
+      try {
+        const res = await uploadAPI.uploadDocument(file, 'hcm/offers');
+        const cloudUrl = res.data?.data?.url;
+        if (cloudUrl) {
+          file.url = cloudUrl;
+          showToast(`Offer letter uploaded to ImageKit: ${file.name}`, 'success');
+          return;
+        }
+      } catch (uploadErr) {
+        console.warn('Direct ImageKit offer upload failed, will upload on submit:', uploadErr.message);
+      }
       showToast(`Offer letter selected: ${file.name}`);
     }
   };

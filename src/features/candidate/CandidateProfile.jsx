@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useCandidate } from '../../context/CandidateContext';
+import { uploadAPI } from '../../utils/apiService';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import { usePersistedTab } from '../../hooks/usePersistedTab';
@@ -44,33 +45,86 @@ const CandidateProfile = () => {
     setIsEditing(false);
   };
 
-  const handleAvatarUpload = (e) => {
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, avatar: reader.result, avatarBase64: reader.result }));
-        showToast('Profile picture updated');
-      };
-      reader.readAsDataURL(file);
+      try {
+        const res = await uploadAPI.uploadImage(file, 'hcm/avatars');
+        const cloudUrl = res.data?.data?.url;
+        if (cloudUrl) {
+          setFormData(prev => ({ ...prev, avatar: cloudUrl, avatarUrl: cloudUrl }));
+          showToast('Avatar uploaded to Cloudinary');
+        } else {
+          throw new Error('No URL');
+        }
+      } catch (err) {
+        console.error('Cloud avatar upload failed, using fallback:', err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData(prev => ({ ...prev, avatar: reader.result, avatarBase64: reader.result }));
+          showToast('Profile picture updated');
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
-  const handleResumeUpload = (e) => {
+  const handleResumeUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, resumeUrl: file.name, resumeBase64: reader.result }));
-        showToast('Resume updated');
-      };
-      reader.readAsDataURL(file);
+      try {
+        const res = await uploadAPI.uploadDocument(file, 'hcm/resumes');
+        const cloudUrl = res.data?.data?.url;
+        if (cloudUrl) {
+          setFormData(prev => ({ ...prev, resumeUrl: cloudUrl, resumeName: file.name }));
+          showToast('Resume uploaded to ImageKit');
+        } else {
+          throw new Error('No URL');
+        }
+      } catch (err) {
+        console.error('Cloud resume upload failed, using fallback:', err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData(prev => ({ ...prev, resumeUrl: file.name, resumeBase64: reader.result }));
+          showToast('Resume updated');
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
-  const handleDocumentUpload = (e, type) => {
+  const handleDocumentUpload = async (e, type) => {
     const file = e.target.files?.[0];
     if (file) {
+      const isId = type === 'Identification';
+      const folder = isId ? 'hcm/proofs' : 'hcm/proofs';
+      const base64Field = isId ? 'identityProofBase64' : 'educationProofBase64';
+      const urlField = isId ? 'identityProofUrl' : 'educationProofUrl';
+
+      try {
+        const res = await uploadAPI.uploadDocument(file, folder);
+        const cloudUrl = res.data?.data?.url;
+        if (cloudUrl) {
+          const newDoc = {
+            id: `doc-${type.toLowerCase()}`,
+            name: file.name,
+            type: type,
+            date: formatDate(new Date()),
+            isNew: true,
+            url: cloudUrl
+          };
+          setFormData(prev => ({
+            ...prev,
+            [urlField]: cloudUrl,
+            documents: prev.documents ? [...prev.documents.filter(d => d.type !== type), newDoc] : [newDoc]
+          }));
+          showToast(`${type} uploaded to ImageKit`);
+          return;
+        }
+      } catch (err) {
+        console.error('Cloud doc upload failed, using fallback:', err);
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => {
@@ -82,7 +136,6 @@ const CandidateProfile = () => {
             isNew: true,
             url: reader.result
           };
-          const base64Field = type === 'Identification' ? 'identityProofBase64' : 'educationProofBase64';
           return {
             ...prev,
             [base64Field]: reader.result,

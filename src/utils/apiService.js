@@ -26,7 +26,7 @@ const API = axios.create({
 });
 
 export const getActiveToken = () => {
-  return sessionStorage.getItem('hcm_token');
+  return sessionStorage.getItem('hcm_token') || localStorage.getItem('hcm_token');
 };
 
 // ── Request Interceptor: Har request mein token attach karo ──

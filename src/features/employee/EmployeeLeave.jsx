@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useEmployee } from '../../context/EmployeeContext';
+import { uploadAPI } from '../../utils/apiService';
 import StatCard from '../../shared/components/ui/StatCard';
 import CenterModal from '../../shared/components/layout/CenterModal';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
@@ -79,13 +80,31 @@ const EmployeeLeave = () => {
     showToast('Leave report exported successfully');
   };
 
-  const handleLeaveFileChange = (e) => {
+  const handleLeaveFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      const kb = file.size / 1024;
+      const sizeStr = kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`;
+
+      try {
+        const res = await uploadAPI.uploadDocument(file, 'hcm/leaves');
+        const cloudUrl = res.data?.data?.url;
+        if (cloudUrl) {
+          setLeaveAttachment({
+            name: file.name,
+            size: sizeStr,
+            fileBase64: cloudUrl,
+            url: cloudUrl
+          });
+          showToast('Leave document attached');
+          return;
+        }
+      } catch (uploadErr) {
+        console.warn('Direct ImageKit leave doc upload failed, using fallback:', uploadErr.message);
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        const kb = file.size / 1024;
-        const sizeStr = kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`;
         setLeaveAttachment({
           name: file.name,
           size: sizeStr,

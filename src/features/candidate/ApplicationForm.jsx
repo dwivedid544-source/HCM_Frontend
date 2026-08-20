@@ -10,6 +10,7 @@ import { cn } from '../../utils/cn';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCandidate } from '../../context/CandidateContext';
 import { useCurrency } from '../../hooks/useCurrency';
+import { uploadAPI } from '../../utils/apiService';
 
 const ApplicationForm = () => {
   const { formatCurrency, getSymbol, getIcon, masterCurrency } = useCurrency();
@@ -23,20 +24,19 @@ const ApplicationForm = () => {
 
  const [isSubmitted, setIsSubmitted] = useState(false);
  const [isSubmitting, setIsSubmitting] = useState(false);
+ const [resume, setResume] = useState(null);
+ const [skills, setSkills] = useState(profile?.skills || ['React', 'TypeScript', 'Tailwind CSS', 'Node.js']);
  const [formData, setFormData] = useState({
- fullName: profile.fullName,
- email: profile.email,
- phone: profile.phone,
- location: profile.location,
- experience: '3-5 Years',
- expectedSalary: profile.expectedSalary,
- noticePeriod: profile.noticePeriod,
- coverLetter: '',
- linkedin: profile.linkedin,
- portfolio: profile.portfolio
+ fullName: profile?.fullName || '',
+ email: profile?.email || '',
+ phone: profile?.phone || '',
+ location: profile?.location || '',
+ linkedin: profile?.linkedin || '',
+ portfolio: profile?.portfolio || '',
+ expectedSalary: profile?.expectedSalary || '',
+ availability: 'Immediate',
+ coverLetter: ''
  });
- const [resume, setResume] = useState({ name: 'Alex_Rivera_CV_2026.pdf', size: '2.4 MB' });
- const [skills, setSkills] = useState(profile.skills || []);
  const [skillInput, setSkillInput] = useState('');
 
  const handleAddSkill = (e) => {
@@ -49,34 +49,42 @@ const ApplicationForm = () => {
 
  const removeSkill = (skill) => setSkills(skills.filter(s => s !== skill));
 
-  const handleSubmit = (e) => {
-  e.preventDefault();
-  setIsSubmitting(true);
-  
-  const submitApp = (base64Data = null) => {
-    const payload = {
-      ...formData,
-      skills: skills,
-      resumeUrl: resume ? resume.name : null,
-      resumeBase64: base64Data
-    };
-    
-    setTimeout(() => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    let cloudResumeUrl = null;
+    if (resume && resume instanceof File) {
+      try {
+        const res = await uploadAPI.uploadDocument(resume, 'hcm/resumes');
+        cloudResumeUrl = res.data?.data?.url;
+      } catch (uploadErr) {
+        console.warn('ImageKit resume upload failed, using fallback:', uploadErr.message);
+      }
+    }
+
+    const submitApp = (base64Data = null) => {
+      const payload = {
+        ...formData,
+        skills: skills,
+        resumeUrl: cloudResumeUrl || (resume ? resume.name : null),
+        resumeBase64: base64Data
+      };
+      
       applyForJob(jobInfo.id, payload);
       setIsSubmitting(false);
       setIsSubmitted(true);
-    }, 2000);
-  };
-
-  if (resume && resume instanceof File) {
-    const reader = new FileReader();
-    reader.readAsDataURL(resume);
-    reader.onload = () => {
-      submitApp(reader.result);
     };
-  } else {
-    submitApp(null);
-  }
+
+    if (!cloudResumeUrl && resume && resume instanceof File) {
+      const reader = new FileReader();
+      reader.readAsDataURL(resume);
+      reader.onload = () => {
+        submitApp(reader.result);
+      };
+    } else {
+      submitApp(null);
+    }
   };
 
  if (isSubmitted) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileBadge, X, ShieldCheck, Download, FileText, Trash2 } from 'lucide-react';
 import { useAdmin } from '../../../context/AdminContext';
+import { uploadAPI } from '../../../utils/apiService';
 import DatePicker from '../../../shared/components/common/DatePicker';
 
 const ComplianceModal = ({ isOpen, onClose, policy, isRenewing }) => {
@@ -82,17 +83,34 @@ const ComplianceModal = ({ isOpen, onClose, policy, isRenewing }) => {
     onClose();
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       if (file.type !== 'application/pdf') {
         showToast('Please upload a valid PDF document', 'error');
         return;
       }
-      if (file.size > 10 * 1024 * 1024) {
-        showToast('File size must be less than 10MB', 'error');
+      if (file.size > 15 * 1024 * 1024) {
+        showToast('File size must be less than 15MB', 'error');
         return;
       }
+
+      try {
+        const res = await uploadAPI.uploadDocument(file, 'hcm/policies');
+        const cloudUrl = res.data?.data?.url;
+        if (cloudUrl) {
+          setFormData(prev => ({
+            ...prev,
+            pdfName: file.name,
+            pdfData: cloudUrl
+          }));
+          showToast('Policy PDF uploaded to ImageKit successfully!', 'success');
+          return;
+        }
+      } catch (uploadErr) {
+        console.warn('Direct ImageKit policy upload failed, using fallback:', uploadErr.message);
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({

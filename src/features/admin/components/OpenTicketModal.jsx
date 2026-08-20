@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, X, CheckCircle2, Loader2, Info, Paperclip, AlertOctagon } from 'lucide-react';
 import { useAdmin } from '../../../context/AdminContext';
 import { cn } from '../../../utils/cn';
+import { uploadAPI } from '../../../utils/apiService';
 
 const OpenTicketModal = ({ isOpen, onClose }) => {
   const { showToast } = useAdmin();
@@ -11,13 +12,24 @@ const OpenTicketModal = ({ isOpen, onClose }) => {
   const [priority, setPriority] = useState('Medium');
   const [description, setDescription] = useState('');
   const [attachmentName, setAttachmentName] = useState('');
+  const [attachmentUrl, setAttachmentUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStep, setSubmitStep] = useState(0); // 0 = Idle, 1 = Submitting, 2 = Success
   const [ticketId, setTicketId] = useState('');
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     if (e.target.files && e.target.files[0]) {
-      setAttachmentName(e.target.files[0].name);
+      const file = e.target.files[0];
+      setAttachmentName(file.name);
+      try {
+        const res = await uploadAPI.uploadAuto(file, 'hcm/tickets');
+        if (res.data?.data?.url) {
+          setAttachmentUrl(res.data.data.url);
+          showToast('Attachment uploaded successfully!', 'success');
+        }
+      } catch (err) {
+        console.warn('Ticket upload error:', err.message);
+      }
     }
   };
 

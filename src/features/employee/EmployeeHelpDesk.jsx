@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import api from '../../utils/apiService';
+import api, { getBackendURL, uploadAPI } from '../../utils/apiService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LifeBuoy, Plus, Search, Filter, Clock, CheckCircle2, AlertCircle, X, MessageSquare, 
@@ -7,7 +7,6 @@ import {
   MessageCircle, Hash, ArrowRight, Star, Trash, Sparkles, Copy, Check, RefreshCw, HelpCircle, FileText, Bot,
   Headphones, CheckCheck, Download, Building2
 } from 'lucide-react';
-import { getBackendURL } from '../../utils/apiService';
 import { cn } from '../../utils/cn';
 import { useDateFormat } from '../../hooks/useDateFormat';
 import { useEmployee } from '../../context/EmployeeContext';
@@ -243,28 +242,48 @@ const EmployeeHelpDesk = () => {
     showToast('Support ticket created successfully');
   };
 
-  const handleCreateFileSelect = (e) => {
+  const handleCreateFileSelect = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showToast('File too large (max 5MB)', 'error');
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('File too large (max 10MB)', 'error');
         return;
       }
       setCreateAttachmentName(file.name);
+      try {
+        const res = await uploadAPI.uploadAuto(file, 'hcm/tickets');
+        const cloudUrl = res.data?.data?.url;
+        if (cloudUrl) {
+          setCreateAttachmentBase64(cloudUrl);
+          return;
+        }
+      } catch (uploadErr) {
+        console.warn('Direct ticket attachment upload failed, using fallback:', uploadErr.message);
+      }
       const reader = new FileReader();
       reader.onloadend = () => setCreateAttachmentBase64(reader.result);
       reader.readAsDataURL(file);
     }
   };
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        showToast('File too large (max 5MB)', 'error');
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('File too large (max 10MB)', 'error');
         return;
       }
       setAttachmentName(file.name);
+      try {
+        const res = await uploadAPI.uploadAuto(file, 'hcm/tickets');
+        const cloudUrl = res.data?.data?.url;
+        if (cloudUrl) {
+          setAttachmentBase64(cloudUrl);
+          return;
+        }
+      } catch (uploadErr) {
+        console.warn('Direct ticket attachment upload failed, using fallback:', uploadErr.message);
+      }
       const reader = new FileReader();
       reader.onloadend = () => setAttachmentBase64(reader.result);
       reader.readAsDataURL(file);

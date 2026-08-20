@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { employeeAPI as api } from '../../utils/apiService';
+import { employeeAPI as api, uploadAPI } from '../../utils/apiService';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Briefcase, GraduationCap, Sparkles, Plus, Trash2, ChevronRight, ChevronLeft,
@@ -171,10 +171,23 @@ const ResumeBuilder = () => {
     setLocalData(prev => ({ ...prev, personal: { ...prev.personal, [field]: value } }));
   };
 
-  const handleAvatarUpload = (e) => {
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      updatePersonal('avatar', URL.createObjectURL(file));
+      try {
+        const res = await uploadAPI.uploadImage(file, 'hcm/avatars');
+        const cloudUrl = res.data?.data?.url;
+        if (cloudUrl) {
+          updatePersonal('avatar', cloudUrl);
+          showToast('Resume avatar uploaded to Cloudinary', 'success');
+          return;
+        }
+      } catch (uploadErr) {
+        console.warn('Resume avatar upload failed, using fallback:', uploadErr.message);
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => updatePersonal('avatar', reader.result);
+      reader.readAsDataURL(file);
     }
   };
 

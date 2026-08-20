@@ -9,13 +9,13 @@ import {
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../hooks/useAuth';
 import { useAdmin } from '../../context/AdminContext';
-import { uploadAPI } from '../../utils/apiService';
+import { uploadAPI, employeeAPI } from '../../utils/apiService';
 import PhoneInput from '../../shared/components/ui/PhoneInput';
 import DatePicker from '../../shared/components/common/DatePicker';
 import { usePersistedTab } from '../../hooks/usePersistedTab';
 
 const AdminProfile = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { showToast } = useAdmin();
 
   // Format role for display: 'ADMIN' -> 'Admin', 'SUPERADMIN' -> 'Super Admin'
@@ -94,14 +94,53 @@ const AdminProfile = () => {
   ]);
 
   // Handlers
-  const handleSave = () => {
+  const handleSave = async () => {
     if (isEditing) {
       if (!profileData.personal.fullName || !profileData.personal.email) {
-         showToast('Error: Name and Email cannot be empty.');
+         showToast('Error: Name and Email cannot be empty.', 'error');
          return;
       }
-      setIsEditing(false);
-      showToast('Profile updated securely.');
+      try {
+        const res = await employeeAPI.updateProfile({
+          fullName: profileData.personal.fullName,
+          phone: profileData.personal.phone,
+          dob: profileData.personal.dob,
+          gender: profileData.personal.gender,
+          address: profileData.personal.address,
+          emergencyPhone: profileData.personal.emergencyContact,
+          avatarUrl: avatarPreview,
+          bio: profileData.personal.bio,
+          language: profileData.preferences.language,
+          timezone: profileData.preferences.timezone,
+          dateFormat: profileData.preferences.dateFormat,
+          emailNotif: profileData.preferences.emailNotif,
+          pushNotif: profileData.preferences.pushNotif,
+          weeklySummary: profileData.preferences.weeklySummary
+        });
+
+        if (res.data?.success) {
+          const updatedUser = {
+            ...user,
+            name: profileData.personal.fullName,
+            email: profileData.personal.email,
+            phone: profileData.personal.phone,
+            avatar: avatarPreview,
+            bio: profileData.personal.bio
+          };
+          localStorage.setItem('hcm_user', JSON.stringify(updatedUser));
+          sessionStorage.setItem('hcm_user', JSON.stringify(updatedUser));
+          if (refreshUser) {
+            await refreshUser();
+          }
+          setIsEditing(false);
+          showToast('Profile updated securely.');
+        } else {
+          showToast('Failed to update profile on server', 'error');
+        }
+      } catch (err) {
+        console.error('Failed to save profile changes:', err);
+        showToast('Error saving profile changes', 'error');
+      }
     }
   };
 
@@ -113,7 +152,13 @@ const AdminProfile = () => {
         const cloudUrl = response.data?.data?.url;
         if (cloudUrl) {
           setAvatarPreview(cloudUrl);
-          showToast('Avatar uploaded successfully!');
+          showToast('Avatar uploaded to Cloudinary successfully!');
+          try {
+            await employeeAPI.updateProfile({ avatarUrl: cloudUrl });
+            if (refreshUser) await refreshUser();
+          } catch (autoSaveErr) {
+            console.warn('Auto-save avatar warning:', autoSaveErr.message);
+          }
         } else {
           throw new Error('No URL returned');
         }
