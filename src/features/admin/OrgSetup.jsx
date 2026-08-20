@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
    Building2,
@@ -111,6 +111,11 @@ const OrgSetup = () => {
    const [orgId, setOrgId] = useState(null);
    const [isLoading, setIsLoading] = useState(true);
    const [isSaving, setIsSaving] = useState(false);
+   const fileInputRef = useRef(null);
+
+   const triggerFileInput = () => {
+      fileInputRef.current?.click();
+   };
 
    const isFormEmpty = useMemo(() => isOrgDataEmpty(orgData), [orgData]);
 
@@ -467,25 +472,48 @@ const OrgSetup = () => {
                <div className="card flex flex-col items-center">
                   <h3 className="text-xs font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-4 w-full">Company Logo</h3>
 
+                  <input 
+                     type="file" 
+                     ref={fileInputRef} 
+                     accept="image/*" 
+                     onChange={handleLogoUpload} 
+                     className="hidden" 
+                  />
+
                   {orgData.logo ? (
                      <div className="flex flex-col items-center gap-4 w-full">
-                        <img src={orgData.logo} alt="Company Logo" className="w-32 h-32 rounded-[2rem] object-cover shadow-md border border-slate-100 dark:border-slate-800" />
+                        <div 
+                           onClick={triggerFileInput}
+                           className="relative w-32 h-32 rounded-[2rem] overflow-hidden group cursor-pointer border border-slate-100 dark:border-slate-800 shadow-md"
+                        >
+                           <img 
+                              src={orgData.logo} 
+                              alt="Company Logo" 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                           />
+                           <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 text-white">
+                              <Upload size={20} className="animate-bounce" />
+                              <span className="text-[9px] font-black uppercase tracking-wider">Change Logo</span>
+                           </div>
+                        </div>
                         <button
                            onClick={handleRemoveLogo}
-                           className="btn-danger text-xs flex items-center gap-2 py-2 px-4"
+                           className="btn-danger text-xs flex items-center gap-2 py-2 px-4 hover:scale-95 transition-all"
                         >
                            <Trash2 size={14} />
                            <span>Remove Logo</span>
                         </button>
                      </div>
                   ) : (
-                     <label className="w-32 h-32 bg-slate-50 dark:bg-slate-800 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center p-4 group cursor-pointer hover:border-primary-500 dark:hover:border-primary-600 hover:bg-primary-50/20 dark:hover:bg-primary-950/10 transition-all relative">
-                        <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                        <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-sm text-slate-300 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors translate-y-1 group-hover:translate-y-0 transition-all duration-300">
+                     <div 
+                        onClick={triggerFileInput}
+                        className="w-32 h-32 bg-slate-50 dark:bg-slate-800 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center p-4 group cursor-pointer hover:border-primary-500 dark:hover:border-primary-600 hover:bg-primary-50/20 dark:hover:bg-primary-950/10 transition-all relative"
+                     >
+                        <div className="p-3 bg-white dark:bg-slate-900 rounded-xl shadow-sm text-slate-350 dark:text-slate-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-all duration-300">
                            <Upload size={24} />
                         </div>
                         <span className="text-[9px] font-extrabold text-slate-450 dark:text-slate-550 font-bold mt-4 text-center">Click to Upload</span>
-                     </label>
+                     </div>
                   )}
 
                   <p className="text-[10px] font-medium text-slate-450 dark:text-slate-500 mt-4 text-center px-4 leading-relaxed tracking-tight italic">Preferred format: PNG or SVG (Max 5MB). Logo will be used in payslips and invoices.</p>
