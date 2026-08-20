@@ -257,6 +257,17 @@ export const EmployeeProvider = ({ children }) => {
     }
   }, []);
 
+  const [documents, setDocuments] = useState([]);
+
+  const fetchDocuments = useCallback(async () => {
+    try {
+      const res = await employeeAPI.getDocuments();
+      setDocuments(res.data.data || []);
+    } catch {
+      showToast('Failed to load documents', 'error');
+    }
+  }, []);
+
   const initializePortal = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -488,17 +499,6 @@ export const EmployeeProvider = ({ children }) => {
       showToast('Failed to delete skill', 'error');
     }
   };
-
-  const [documents, setDocuments] = useState([]);
-
-  const fetchDocuments = useCallback(async () => {
-    try {
-      const res = await employeeAPI.getDocuments();
-      setDocuments(res.data.data || []);
-    } catch {
-      showToast('Failed to load documents', 'error');
-    }
-  }, []);
 
   const uploadDoc = async (doc) => {
     try {
